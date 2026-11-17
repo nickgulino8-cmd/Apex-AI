@@ -7,8 +7,8 @@ import { RegisterSW } from "@/components/RegisterSW";
 export const metadata: Metadata = {
   title: { default: "APEX AI", template: "%s · APEX AI" },
   description: "Personal optimization platform — training, skin health, and daily discipline.",
-  appleWebApp: { capable: true, title: "APEX", statusBarStyle: "black-translucent" },
-  icons: { apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "APEX", statusBarStyle: "black" },
+  icons: { apple: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/icons/apple-touch-icon.png` },
 };
 
 export const viewport: Viewport = { themeColor: "#07080a", width: "device-width", initialScale: 1, viewportFit: "cover" };

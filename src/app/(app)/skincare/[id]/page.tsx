@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, ShieldAlert, Stethoscope } from "lucide-react";
-import { COMPOUND_BY_ID, ACCESS_LABEL, CONCERN_LABEL, references } from "@/lib/data/compounds";
+import { COMPOUNDS, COMPOUND_BY_ID, ACCESS_LABEL, CONCERN_LABEL, references } from "@/lib/data/compounds";
 import { Badge, Card } from "@/components/ui";
+
+export function generateStaticParams() {
+  return COMPOUNDS.map((c) => ({ id: c.id }));
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   return { title: COMPOUND_BY_ID.get((await params).id)?.name ?? "Not found" };

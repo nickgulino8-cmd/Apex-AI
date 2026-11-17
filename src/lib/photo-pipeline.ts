@@ -1,4 +1,3 @@
-import "server-only";
 import { db } from "./db";
 import { HttpError, rateLimit, type User } from "./auth";
 import { decodeImage, writePhoto } from "./storage";
@@ -19,10 +18,10 @@ export function preparePhoto(user: User, dataUrl: string, consent: boolean) {
   }
 }
 
-export function savePhoto(user: User, kind: "face" | "body", data: Buffer): string {
+export async function savePhoto(user: User, kind: "face" | "body", data: Uint8Array): Promise<string> {
   const pid = id();
   const file = `${id()}.bin`;
-  writePhoto(user.id, file, data);
+  await writePhoto(user.id, file, data);
   db.prepare("INSERT INTO photos (id, user_id, kind, file_name) VALUES (?,?,?,?)").run(pid, user.id, kind, file);
   return pid;
 }

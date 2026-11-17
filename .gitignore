@@ -8,3 +8,5 @@ storage/
 next-env.d.ts
 public/mediapipe/vision_wasm*
 tsconfig.tsbuildinfo
+public/sqljs/
+out/

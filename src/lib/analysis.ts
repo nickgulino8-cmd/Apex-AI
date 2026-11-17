@@ -1,4 +1,3 @@
-import "server-only";
 import { z } from "zod";
 import { OTC_SUGGESTABLE, DERM_DISCUSS } from "./data/compounds";
 import { EXERCISES, MUSCLE_GROUPS } from "./data/exercises";

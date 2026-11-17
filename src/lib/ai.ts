@@ -1,4 +1,3 @@
-import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type * as z from "zod/v4";
@@ -16,25 +15,35 @@ const FALLBACK = { betas: ["server-side-fallback-2026-07-01"], fallbacks: "defau
 
 export class AiUnavailableError extends Error {}
 
+/**
+ * The user's own Anthropic API key, stored only in this browser. Requests go directly from
+ * the phone to Anthropic — there is no APEX server in between.
+ */
+const KEY = "apex-anthropic-key";
+export function getApiKey(): string | null {
+  try { return localStorage.getItem(KEY); } catch { return null; }
+}
+export function setApiKey(k: string | null) {
+  try { if (k) localStorage.setItem(KEY, k.trim()); else localStorage.removeItem(KEY); } catch { /* storage blocked */ }
+  _client = null;
+}
 export function aiConfigured(): boolean {
-  return !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
+  return !!getApiKey();
 }
 
 let _client: Anthropic | null = null;
 export function client(): Anthropic {
-  if (!aiConfigured())
-    throw new AiUnavailableError(
-      "AI analysis isn't configured on this server yet. Add ANTHROPIC_API_KEY to the environment to enable it.",
-    );
-  return (_client ??= new Anthropic());
+  const key = getApiKey();
+  if (!key) throw new AiUnavailableError("AI features need your Anthropic API key. Add it in Profile → AI.");
+  return (_client ??= new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true }));
 }
 
 /** Wrap SDK errors into user-safe messages. */
 function friendly(e: unknown): never {
   if (e instanceof AiUnavailableError) throw e;
   if (e instanceof Anthropic.RateLimitError) throw new AiUnavailableError("The AI service is busy right now. Try again in a minute.");
-  if (e instanceof Anthropic.AuthenticationError) throw new AiUnavailableError("The AI API key on this server was rejected.");
-  if (e instanceof Anthropic.APIConnectionError) throw new AiUnavailableError("Couldn't reach the AI service. Check the server's network.");
+  if (e instanceof Anthropic.AuthenticationError) throw new AiUnavailableError("Your Anthropic API key was rejected. Check it in Profile → AI.");
+  if (e instanceof Anthropic.APIConnectionError) throw new AiUnavailableError("Couldn't reach the AI service. Check your connection.");
   if (e instanceof Anthropic.APIError) throw new AiUnavailableError(`AI request failed (${e.status ?? "network"}).`);
   throw e;
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Trash2, GitCompareArrows, ImageOff, ChevronDown } from "lucide-react";
 import { api } from "@/lib/client";
+import { LocalPhoto } from "@/components/LocalPhoto";
 import { Badge, Empty } from "@/components/ui";
 import { describe, type Metrics } from "@/lib/face-metrics";
 import { FaceReportView, type CompoundLite } from "./FaceReportView";
@@ -42,7 +43,7 @@ export function FaceHistory({ items, compounds }: { items: FaceAnalysis[]; compo
               <div className="aspect-[4/3] overflow-hidden rounded-xl bg-raised">
                 {x.photo_id ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={`/api/photos/${x.photo_id}`} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  <LocalPhoto id={x.photo_id} alt="" className="h-full w-full object-cover" loading="lazy" />
                 ) : (
                   <div className="grid h-full place-items-center text-xs text-dim"><span className="flex items-center gap-1.5"><ImageOff size={14} /> Photo not saved</span></div>
                 )}
@@ -76,7 +77,7 @@ export function FaceHistory({ items, compounds }: { items: FaceAnalysis[]; compo
             <div className="mb-6 grid grid-cols-2 gap-3">
               {[a, b].map((x) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img key={x.id} src={`/api/photos/${x.photo_id}`} alt="" className="aspect-[3/4] w-full rounded-xl object-cover" />
+                <LocalPhoto key={x.id} id={x.photo_id!} alt="" className="aspect-[3/4] w-full rounded-xl object-cover" />
               ))}
             </div>
           )}

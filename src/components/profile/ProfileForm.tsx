@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Download, Trash2, Brain, ShieldCheck, Moon, Sun } from "lucide-react";
 import { api } from "@/lib/client";
+import { DeviceData } from "./DeviceData";
 import { Chips, Slider, Toggle } from "@/components/forms/Choice";
 import { Notice, Spinner } from "@/components/ui";
 import { GOAL_OPTIONS, EQUIP_OPTIONS } from "@/lib/options";
@@ -41,7 +42,7 @@ export function ProfileForm({ name, email, age, isMinor, profile, memories, aiRe
         <h2 className="h2">Account</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <label><span className="label mb-1.5 block">Name</span><input className="input" value={p.name} onChange={(e) => u({ name: e.target.value })} maxLength={60} /></label>
-          <label><span className="label mb-1.5 block">Email</span><input className="input opacity-70" value={email} disabled /></label>
+          <label><span className="label mb-1.5 block">Storage</span><input className="input opacity-70" value="This device only" disabled /></label>
         </div>
         {isMinor && <Notice><span className="flex gap-2"><ShieldCheck size={16} className="shrink-0 text-accent" /> Because you&apos;re {age}, photo analysis, photo storage and AI memory are disabled as extra safeguards.</span></Notice>}
       </section>
@@ -105,20 +106,10 @@ export function ProfileForm({ name, email, age, isMinor, profile, memories, aiRe
             </ul>
           </div>
         )}
-        <div className="flex flex-wrap gap-2 pt-2">
-          <a href="/api/account/export" className="btn-ghost text-xs"><Download size={14} /> Export my data (JSON)</a>
-          <button onClick={async () => { if (confirm("Delete ALL saved photos permanently? Analyses keep their text reports.")) { await api("/api/account?scope=photos", { method: "DELETE" }); router.refresh(); } }} className="btn-ghost text-xs"><Trash2 size={14} /> Delete all photos</button>
-          <button
-            onClick={async () => {
-              const pw = prompt("This permanently deletes your account and ALL data. Enter your password to confirm:");
-              if (!pw) return;
-              try { await api("/api/account", { method: "DELETE", body: { password: pw } }); window.location.href = "/register"; } catch (e) { alert((e as Error).message); }
-            }}
-            className="btn-danger text-xs"
-          ><Trash2 size={14} /> Delete account</button>
-        </div>
-        <p className="text-xs text-dim">AI features: {aiReady ? "enabled. Photos you choose to analyse are sent to Anthropic's API for that request only." : "not configured on this server."}</p>
+        <p className="text-xs text-dim">Photos you choose to analyse are sent to Anthropic&apos;s API for that one request, using your key. Nothing else leaves this device.</p>
       </section>
+
+      <DeviceData onChange={() => router.refresh()} />
 
       <div className="sticky bottom-20 z-20 flex items-center justify-end gap-3 lg:bottom-4">
         {err && <span className="text-sm text-bad">{err}</span>}

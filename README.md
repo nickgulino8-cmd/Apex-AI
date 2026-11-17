@@ -2,25 +2,29 @@
 
 A personal optimization platform covering training, skin health and daily discipline. It's built with Next.js 15 (App Router), SQLite, the Claude API and on-device MediaPipe vision.
 
-## Quick start
+## Install on your phone
+
+Open **https://nickgulino8-cmd.github.io/Apex-AI/** on your phone:
+
+- **iPhone:** in **Safari**, tap Share → **Add to Home Screen**.
+- **Android:** in **Chrome**, tap ⋮ → **Install app**.
+
+APEX then runs full-screen from your home screen and works offline.
+
+**Everything stays on your phone.** There's no account and no server. Your workouts, routines, habits, reports and photos are stored in on-device storage (SQLite compiled to WebAssembly and saved in IndexedDB). Use **Profile → Download backup** now and then: deleting the home-screen app or clearing the browser's website data erases it.
+
+**AI features** (face analysis and ratings, physique scan, chat coach) use your own Anthropic API key. Paste it in **Profile → AI**. It's stored only on the phone, and requests go directly from the phone to Anthropic. Every other feature works without a key.
+
+## Development
 
 ```bash
-npm install          # also copies MediaPipe WASM into public/mediapipe
-cp .env.example .env # add ANTHROPIC_API_KEY to enable AI features
+npm install          # also copies the MediaPipe + SQLite WASM runtimes into public/
 npm run dev          # http://localhost:3000
+npm test             # engines, data integrity, safety rules, UI render tests
+npm run build        # static export → out/
 ```
 
-Demo data: `npm run seed:demo`, then sign in as `demo@apex.local` / `apex-demo-2026` (8 weeks of training, habits, skincare and sleep history).
-
-Install on a phone: open the site in Safari (Share → Add to Home Screen) or Chrome (menu → Install app). It runs full-screen like a native app.
-
-Production: `npm run build && npm start`. Set `APEX_ENCRYPTION_KEY` (64 hex chars) in production. Without it, the server refuses to store photos.
-
-Tests: `npm test` (engines, data integrity, safety rules, Markdown renderer). Typecheck: `npm run typecheck`.
-
-## What works without an API key
-
-Everything except three features: AI photo analysis, the physique scan, and the coach's conversational mode. The coach falls back to an **offline assistant** that answers the core questions straight from the user's data and APEX's databases: what to train today, exercises for a muscle, what an ingredient does, comparing two treatments, how to order a routine, what the workout history shows, and which habits to focus on. On-device facial measurement and pose overlays also work offline.
+Pushing to `main` runs typecheck, tests and the build, then publishes `out/` to GitHub Pages (`.github/workflows/ci.yml`).
 
 ## Architecture
 
@@ -30,11 +34,12 @@ src/
     (auth)/login, register        public pages
     onboarding/                   4-step setup → generates program + routine
     (app)/home|face|skincare|fitness|exercises|coach|progress|profile
-    api/…                         JSON route handlers (zod-validated, uniform errors)
+  localapi/…                      request handlers that run in the browser (zod-validated)
+  lib/local-fetch.ts              routes the UI's /api/... calls to those handlers on the device
   lib/
-    db.ts            SQLite schema + migrations (WAL, FK cascade on user delete)
-    auth.ts          bcrypt passwords, hashed session tokens, httpOnly cookies, origin check, rate limits
-    storage.ts       AES-256-GCM encrypted photo files, outside /public
+    db.ts            on-device SQLite (sql.js) + migrations, persisted to IndexedDB
+    auth.ts          single on-device profile (the phone's lock screen protects it)
+    storage.ts       photos as blobs in on-device IndexedDB
     ai.ts            Claude client, structured outputs, streaming, shared safety rules
     analysis.ts      face/body report schemas + system prompts
     prompts.ts       coach system prompts (assistant / appearance modes)
@@ -57,26 +62,15 @@ src/
 
 - **Ratings.** Facial (harmony, angularity, dimorphism, features) and physique (proportions, development, symmetry, definition) ratings on a 1–10 scale with a likely range, plus the pillar the user leans toward and non-drug, non-surgical changes they can make. Ratings come from a separate model call, so a declined rating never blocks the skin or muscle report. Adults only, on by default with a Profile toggle. The dimorphism reference is chosen by the user, never inferred. Prompts forbid race, ethnicity or skin tone affecting scores, and forbid incel/blackpill vocabulary. Landmark inputs: thirds, symmetry, jaw/cheek ratio, canthal tilt, FWHR and midface ratio.
 - **Prescription content.** Face reports recommend prescription dermatology options (retinoids including isotretinoin, topical/oral antibiotics, spironolactone, hydroquinone, rosacea treatments, finasteride/minoxidil for hair loss, and others) with why and what to expect, framed for a dermatologist visit. No doses or sourcing. Anabolic steroids, SARMs, testosterone, aromatase inhibitors, SERMs and systemic steroids are never recommended; they stay as education only, and tests enforce this. Pregnancy flags strip teratogenic options.
-- **Photos.** Landmark detection runs in the browser, and only ~11 aggregate ratios reach the server. No landmark mesh or biometric template is stored. EXIF/GPS is stripped by re-encoding the image client-side. A photo is sent to the AI only when the user asks for analysis, after explicit consent. It's stored only if the user ticks "save", is encrypted at rest, is served only to its owner, and can be deleted individually or all at once.
+- **Photos.** Landmark detection runs on the phone, and the landmark mesh is discarded after drawing (only ~11 aggregate ratios are kept). EXIF/GPS is stripped by re-encoding the image. A photo leaves the phone only when you run an AI analysis, after explicit consent, and goes straight to Anthropic with your key. It's saved only if you tick "save", stays on the device, and can be deleted individually or all at once.
 - **Minors.** Users under 13 can't register. For ages 13–17, photo analysis, photo storage and AI memory are disabled, and the coach is told to be conservative.
 - **AI memory** is opt-in. The coach proposes a memory and nothing is saved until the user approves it. Memories are viewable and deletable, and turning the feature off wipes them.
-- **Data rights:** JSON export and password-confirmed account deletion (cascades to every table and removes photo files).
+- **Your data:** full backup/restore file, JSON export, and "Erase everything" (removes the database, photos and stored API key from the device).
 
 ## Known limitations
 
 - The movement demos are stylised stick-figure animations of each movement *pattern*, not filmed demonstrations. Each exercise also links to a YouTube search for video.
 - Reference links open pre-searched queries on DailyMed, MedlinePlus, NCBI Bookshelf and PubMed rather than specific article URLs, so they can't go stale or point at the wrong paper.
-- SQLite suits single-instance deployments. For horizontal scaling, swap `db.ts` for Postgres (the SQL is portable) and move photos to object storage.
+- Data lives on one device and doesn't sync between phones. Move it with Download backup → Restore backup. Backups don't include photos.
+- iOS can clear website storage for sites that aren't added to the home screen and go unused for weeks. Install the app to the home screen and keep backups.
 - AI photo analysis, the physique scan and conversational coaching haven't been exercised against the live API in this build environment, which had no API key. Request shapes are type-checked against the SDK and the schemas are verified to convert.
-
-## Deploying
-
-The app keeps its SQLite database and encrypted photos on disk, so deploy it somewhere with a **persistent volume**: Render, Fly.io, Railway, or any Docker host. Serverless platforms like Vercel won't keep the database between requests.
-
-1. Build from the included `Dockerfile` and mount a persistent volume at `/data`.
-2. Set these environment variables:
-   - `ANTHROPIC_API_KEY`: enables the AI features.
-   - `APEX_ENCRYPTION_KEY`: 64 hex characters. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
-3. Optionally, seed demo data once with `npm run seed:demo`.
-
-GitHub Actions (`.github/workflows/ci.yml`) runs typecheck, tests and build on every push and pull request.

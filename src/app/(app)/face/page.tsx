@@ -1,6 +1,7 @@
+"use client";
+import { useLocalView, useSP } from "@/components/Local";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
-import { requireUser } from "@/lib/auth";
 import { db, json } from "@/lib/db";
 import { aiConfigured } from "@/lib/ai";
 import { compoundLite } from "@/lib/compound-lite";
@@ -9,12 +10,11 @@ import { FaceStudio } from "@/components/face/FaceStudio";
 import { FaceHistory, type FaceAnalysis } from "@/components/face/FaceHistory";
 import { Tabs } from "@/components/Tabs";
 
-export const metadata = { title: "Face" };
-export const dynamic = "force-dynamic";
 
-export default async function FacePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const user = await requireUser();
-  const tab = (await searchParams).tab === "history" ? "history" : "analyse";
+export default function FacePage() {
+  const searchParams = useSP();
+  return useLocalView((user) => {
+  const tab = searchParams.tab === "history" ? "history" : "analyse";
   const header = (
     <PageHeader eyebrow="Face" title="Facial observations & skin analysis" sub="On-device facial measurements, AI skin analysis and a four-pillar facial rating, with progress tracked over time." />
   );
@@ -50,4 +50,5 @@ export default async function FacePage({ searchParams }: { searchParams: Promise
       )}
     </div>
   );
+  });
 }

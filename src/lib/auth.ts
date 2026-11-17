@@ -1,12 +1,10 @@
-import "server-only";
-import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { createHash, randomBytes } from "node:crypto";
 import { db, json } from "./db";
 import { ageFrom } from "./util";
 
-const COOKIE = "apex_session";
-const SESSION_DAYS = 30;
+/**
+ * Single-user, on-device "auth". APEX stores one person's data in this browser; the
+ * phone's own lock screen protects it. There are no passwords or sessions to steal.
+ */
 
 export type Profile = {
   experience: "beginner" | "intermediate" | "advanced";
@@ -39,31 +37,8 @@ export type User = {
   profile: Profile;
 };
 
-const hash = (t: string) => createHash("sha256").update(t).digest("hex");
-
-export async function createSession(userId: string) {
-  const token = randomBytes(32).toString("base64url");
-  const expires = Date.now() + SESSION_DAYS * 864e5;
-  db.prepare("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?,?,?)").run(hash(token), userId, expires);
-  db.prepare("DELETE FROM sessions WHERE expires_at < ?").run(Date.now());
-  (await cookies()).set(COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    expires: new Date(expires),
-  });
-}
-
-export async function destroySession() {
-  const jar = await cookies();
-  const t = jar.get(COOKIE)?.value;
-  if (t) db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hash(t));
-  jar.delete(COOKIE);
-}
-
-type UserRow = { id: string; email: string; name: string; birth_date: string };
 type ProfileRow = Record<string, unknown>;
+type UserRow = { id: string; email: string; name: string; birth_date: string };
 
 export function loadProfile(userId: string): Profile {
   const r = db.prepare("SELECT * FROM profiles WHERE user_id = ?").get(userId) as ProfileRow | undefined;
@@ -90,25 +65,11 @@ export function loadProfile(userId: string): Profile {
   };
 }
 
-export async function currentUser(): Promise<User | null> {
-  const t = (await cookies()).get(COOKIE)?.value;
-  if (!t) return null;
-  const row = db
-    .prepare(
-      `SELECT u.id, u.email, u.name, u.birth_date FROM sessions s JOIN users u ON u.id = s.user_id
-       WHERE s.token_hash = ? AND s.expires_at > ?`,
-    )
-    .get(hash(t), Date.now()) as UserRow | undefined;
+export function currentUser(): User | null {
+  const row = db.prepare("SELECT id, email, name, birth_date FROM users ORDER BY created_at LIMIT 1").get() as UserRow | undefined;
   if (!row) return null;
   const age = ageFrom(row.birth_date);
   return { ...row, age, isMinor: age < 18, profile: loadProfile(row.id) };
-}
-
-/** For server components: redirect to login when signed out. */
-export async function requireUser(): Promise<User> {
-  const u = await currentUser();
-  if (!u) redirect("/login");
-  return u;
 }
 
 export class HttpError extends Error {
@@ -117,18 +78,10 @@ export class HttpError extends Error {
   }
 }
 
-/**
- * For route handlers: authenticated user + same-origin check on mutating requests
- * (SameSite=Lax cookies plus an Origin check gives CSRF protection without tokens).
- */
-export async function apiUser(req: Request): Promise<User> {
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    const origin = req.headers.get("origin");
-    const host = (await headers()).get("host");
-    if (origin && host && new URL(origin).host !== host) throw new HttpError(403, "Cross-origin request blocked");
-  }
-  const u = await currentUser();
-  if (!u) throw new HttpError(401, "Not signed in");
+/** For local API handlers. */
+export async function apiUser(_req?: Request): Promise<User> {
+  const u = currentUser();
+  if (!u) throw new HttpError(401, "Set up your profile first.");
   return u;
 }
 

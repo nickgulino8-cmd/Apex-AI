@@ -1,6 +1,7 @@
+"use client";
+import { useLocalView } from "@/components/Local";
 import Link from "next/link";
 import { ArrowRight, Dumbbell, Quote, Target, BedDouble, Droplets, Sparkles } from "lucide-react";
-import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { today } from "@/lib/util";
 import { activeProgram, dailyEntry, ensureHabits, goalsFor, habitsFor, skincareHistory, workoutData } from "@/lib/repo";
@@ -10,11 +11,9 @@ import { exerciseName } from "@/lib/data/exercises";
 import { Card, SectionHead, Stat, Badge } from "@/components/ui";
 import { HabitChecklist, ChallengeToggle, Reflection, SkincareToday, RecoveryForm } from "@/components/home/widgets";
 
-export const metadata = { title: "Home" };
-export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
-  const user = await requireUser();
+export default function HomePage() {
+  return useLocalView((user) => {
   const date = today();
   ensureHabits(user.id, user.profile.faith_content);
   const prog = activeProgram(user.id);
@@ -124,4 +123,5 @@ export default async function HomePage() {
       )}
     </div>
   );
+  });
 }

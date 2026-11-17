@@ -1,4 +1,3 @@
-import "server-only";
 import { db, json } from "./db";
 import { id, today as todayStr, addDays } from "./util";
 import type { Program, ProgramConfig } from "./engine/program";

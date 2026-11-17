@@ -1,6 +1,7 @@
+"use client";
+import { useLocalView, useSP } from "@/components/Local";
 import Link from "next/link";
 import { Plus, ScanLine } from "lucide-react";
-import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { activeProgram } from "@/lib/repo";
 import { EXERCISES, exerciseName } from "@/lib/data/exercises";
@@ -11,12 +12,11 @@ import { ProgramView } from "@/components/fitness/ProgramView";
 import { ProgramBuilder } from "@/components/fitness/ProgramBuilder";
 import { HistoryList, type HistItem } from "@/components/fitness/HistoryList";
 
-export const metadata = { title: "Fitness" };
-export const dynamic = "force-dynamic";
 
-export default async function FitnessPage({ searchParams }: { searchParams: Promise<{ tab?: string; saved?: string }> }) {
-  const user = await requireUser();
-  const sp = await searchParams;
+export default function FitnessPage() {
+  const searchParams = useSP();
+  return useLocalView((user) => {
+  const sp = searchParams;
   const tab = ["program", "builder", "history", "learn"].includes(sp.tab ?? "") ? sp.tab! : "program";
   const prog = activeProgram(user.id);
   const p = user.profile;
@@ -65,4 +65,5 @@ export default async function FitnessPage({ searchParams }: { searchParams: Prom
       )}
     </div>
   );
+  });
 }

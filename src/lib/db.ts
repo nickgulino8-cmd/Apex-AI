@@ -1,15 +1,15 @@
-import "server-only";
-import Database from "better-sqlite3";
-import fs from "node:fs";
-import path from "node:path";
+"use client";
+import initSqlJs, { type Database as SqlDb, type SqlValue } from "sql.js";
+import { BASE } from "./base";
+import { idbGet, idbSet } from "./idb";
 
 /**
- * SQLite persistence layer. One file, WAL mode, foreign keys on.
- * Every user-owned table cascades on user delete so "Delete my account"
- * removes everything in a single statement.
+ * On-device SQLite. The whole database runs in the browser (sql.js / WebAssembly) and is
+ * persisted to IndexedDB on this device. Nothing is sent to a server.
+ *
+ * `db` exposes the small subset of the better-sqlite3 API the app uses
+ * (prepare().get/all/run, transaction, exec, pragma), so data-access code is unchanged.
  */
-
-export const DATA_DIR = path.resolve(process.env.APEX_DATA_DIR || "./storage");
 
 const MIGRATIONS: string[] = [
   /* 1 — core schema */ `
@@ -196,26 +196,139 @@ const MIGRATIONS: string[] = [
   `,
 ];
 
-function open() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  const db = new Database(path.join(DATA_DIR, "apex.db"));
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-  db.pragma("busy_timeout = 3000");
-  // IMMEDIATE transaction + version re-check inside it, so concurrent processes
-  // (e.g. parallel build workers) can't both run the same migration.
-  db.transaction(() => {
-    const version = db.pragma("user_version", { simple: true }) as number;
-    for (let i = version; i < MIGRATIONS.length; i++) {
-      db.exec(MIGRATIONS[i]);
-      db.pragma(`user_version = ${i + 1}`);
-    }
-  }).immediate();
-  return db;
+type Params = unknown[];
+const norm = (ps: Params): SqlValue[] => ps.map((v) => (v === undefined ? null : typeof v === "boolean" ? Number(v) : (v as SqlValue)));
+
+let raw: SqlDb | null = null;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+const listeners = new Set<() => void>();
+let version = 0;
+
+function scheduleSave() {
+  version++;
+  listeners.forEach((l) => l());
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(flush, 250);
 }
 
-const g = globalThis as unknown as { __apexDb?: Database.Database };
-export const db: Database.Database = g.__apexDb ?? (g.__apexDb = open());
+/** Persist immediately (also called when the app is backgrounded). */
+export async function flush() {
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  if (raw) await idbSet("db", raw.export());
+}
+
+const isWrite = (sql: string) => !/^\s*(SELECT|PRAGMA\s+\w+\s*$|WITH)/i.test(sql);
+
+class Stmt {
+  constructor(private sql: string) {}
+  private run_<T>(ps: Params, fn: (s: ReturnType<SqlDb["prepare"]>) => T): T {
+    const st = need().prepare(this.sql);
+    try {
+      st.bind(norm(ps));
+      return fn(st);
+    } finally {
+      st.free();
+    }
+  }
+  get(...ps: Params): unknown {
+    return this.run_(ps, (st) => (st.step() ? st.getAsObject() : undefined));
+  }
+  all(...ps: Params): unknown[] {
+    return this.run_(ps, (st) => { const out: unknown[] = []; while (st.step()) out.push(st.getAsObject()); return out; });
+  }
+  run(...ps: Params): { changes: number } {
+    const d = need();
+    this.run_(ps, (st) => { st.step(); });
+    const changes = d.getRowsModified();
+    if (isWrite(this.sql) && !inTx) scheduleSave();
+    return { changes };
+  }
+}
+
+let inTx = false;
+function need(): SqlDb {
+  if (!raw) throw new Error("Database not ready");
+  return raw;
+}
+
+export const db = {
+  prepare: (sql: string) => new Stmt(sql),
+  exec(sql: string) {
+    need().exec(sql);
+    if (!inTx) scheduleSave();
+  },
+  pragma(p: string, opts?: { simple: boolean }) {
+    const r = need().exec(`PRAGMA ${p}`);
+    if (opts?.simple) return r[0]?.values[0]?.[0];
+    return r;
+  },
+  transaction<A extends unknown[], R>(fn: (...a: A) => R) {
+    const run = (...a: A): R => {
+      if (inTx) return fn(...a);
+      const d = need();
+      d.exec("BEGIN");
+      inTx = true;
+      try {
+        const r = fn(...a);
+        d.exec("COMMIT");
+        return r;
+      } catch (e) {
+        d.exec("ROLLBACK");
+        throw e;
+      } finally {
+        inTx = false;
+        scheduleSave();
+      }
+    };
+    return Object.assign(run, { immediate: run });
+  },
+};
+
+let ready: Promise<void> | null = null;
+/** Load (or create) the on-device database. Safe to call repeatedly. */
+export function initDb(): Promise<void> {
+  return (ready ??= (async () => {
+    const SQL = await initSqlJs({ locateFile: (f) => `${BASE}/sqljs/${f}` });
+    const saved = await idbGet<Uint8Array>("db");
+    raw = saved ? new SQL.Database(saved) : new SQL.Database();
+    raw.exec("PRAGMA foreign_keys = ON");
+    const version = (raw.exec("PRAGMA user_version")[0]?.values[0]?.[0] as number) ?? 0;
+    for (let i = version; i < MIGRATIONS.length; i++) {
+      raw.exec("BEGIN");
+      raw.exec(MIGRATIONS[i]);
+      raw.exec(`PRAGMA user_version = ${i + 1}`);
+      raw.exec("COMMIT");
+    }
+    if (version < MIGRATIONS.length) await flush();
+    // Ask the browser not to evict our storage, and save when the app is backgrounded.
+    navigator.storage?.persist?.().catch(() => {});
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") void flush(); });
+    window.addEventListener("pagehide", () => void flush());
+  })().catch((e) => { ready = null; throw e; }));
+}
+
+export const dbReady = () => raw !== null;
+export const dbVersion = () => version;
+export function subscribe(fn: () => void) {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+/** Bump the data version so screens re-read (used after imports). */
+export const notify = () => { version++; listeners.forEach((l) => l()); };
+
+/** Replace the whole database (backup restore). */
+export async function replaceDb(bytes: Uint8Array) {
+  const SQL = await initSqlJs({ locateFile: (f) => `${BASE}/sqljs/${f}` });
+  const next = new SQL.Database(bytes);
+  next.exec("SELECT COUNT(*) FROM users"); // validates it's an APEX database
+  raw?.close();
+  raw = next;
+  raw.exec("PRAGMA foreign_keys = ON");
+  await flush();
+  notify();
+}
+
+export const exportDb = () => need().export();
 
 export function json<T>(s: string | null | undefined, fallback: T): T {
   if (!s) return fallback;

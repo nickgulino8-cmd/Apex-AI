@@ -1,21 +1,20 @@
-import "server-only";
-import { NextResponse } from "next/server";
 import { ZodError, type ZodType } from "zod";
 import { HttpError } from "./auth";
 import { AiUnavailableError } from "./ai";
 
-/** Wraps a route handler with uniform JSON error handling. */
+const jsonRes = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
+
+/** Wraps a local API handler with uniform JSON error handling. */
 export function handle<A extends unknown[]>(fn: (...args: A) => Promise<Response>) {
   return async (...args: A): Promise<Response> => {
     try {
       return await fn(...args);
     } catch (e) {
-      if (e instanceof HttpError) return NextResponse.json({ error: e.message }, { status: e.status });
-      if (e instanceof ZodError)
-        return NextResponse.json({ error: "Invalid input", issues: e.issues.map((i) => `${i.path.join(".")}: ${i.message}`) }, { status: 400 });
-      if (e instanceof AiUnavailableError) return NextResponse.json({ error: e.message, code: "ai_unavailable" }, { status: 503 });
+      if (e instanceof HttpError) return jsonRes({ error: e.message }, e.status);
+      if (e instanceof ZodError) return jsonRes({ error: "Invalid input", issues: e.issues.map((i) => `${i.path.join(".")}: ${i.message}`) }, 400);
+      if (e instanceof AiUnavailableError) return jsonRes({ error: e.message, code: "ai_unavailable" }, 503);
       console.error(e);
-      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+      return jsonRes({ error: "Something went wrong. Please try again." }, 500);
     }
   };
 }
@@ -30,4 +29,4 @@ export async function body<T>(req: Request, schema: ZodType<T>): Promise<T> {
   return schema.parse(raw);
 }
 
-export const ok = (data: unknown = { ok: true }, status = 200) => NextResponse.json(data, { status });
+export const ok = (data: unknown = { ok: true }, status = 200) => jsonRes(data, status);

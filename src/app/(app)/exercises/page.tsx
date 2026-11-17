@@ -1,13 +1,14 @@
-import { requireUser } from "@/lib/auth";
+"use client";
+import { useLocalView, useSP } from "@/components/Local";
 import { EXERCISES, available, MUSCLE_GROUPS, type MuscleGroup } from "@/lib/data/exercises";
 import { PageHeader } from "@/components/ui";
 import { Library } from "@/components/exercises/Library";
 
-export const metadata = { title: "Exercises" };
 
-export default async function ExercisesPage({ searchParams }: { searchParams: Promise<{ group?: string }> }) {
-  const user = await requireUser();
-  const g = (await searchParams).group;
+export default function ExercisesPage() {
+  const searchParams = useSP();
+  return useLocalView((user) => {
+  const g = searchParams.group;
   const items = EXERCISES.map((e) => ({ id: e.id, name: e.name, group: e.group, primary: e.primary, equipment: e.equipment, difficulty: e.difficulty, mechanics: e.mechanics, pattern: e.pattern, owned: available(e, user.profile.equipment) }));
   return (
     <div>
@@ -15,4 +16,5 @@ export default async function ExercisesPage({ searchParams }: { searchParams: Pr
       <Library items={items} initialGroup={MUSCLE_GROUPS.includes(g as MuscleGroup) ? (g as MuscleGroup) : null} />
     </div>
   );
+  });
 }

@@ -1,4 +1,5 @@
-import { requireUser } from "@/lib/auth";
+"use client";
+import { useLocalView } from "@/components/Local";
 import { skincareHistory, skincareRoutine } from "@/lib/repo";
 import { today } from "@/lib/util";
 import { COMPOUNDS } from "@/lib/data/compounds";
@@ -6,11 +7,9 @@ import { PageHeader, Card, SectionHead, Ring } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
 import { RoutineBuilder } from "@/components/skincare/RoutineBuilder";
 
-export const metadata = { title: "Routine builder" };
-export const dynamic = "force-dynamic";
 
-export default async function RoutinePage() {
-  const user = await requireUser();
+export default function RoutinePage() {
+  return useLocalView((user) => {
   const p = user.profile;
   const hist = skincareHistory(user.id, 28, today());
   const done = hist.reduce((s, d) => s + Number(d.am) + Number(d.pm), 0);
@@ -34,4 +33,5 @@ export default async function RoutinePage() {
       </Card>
     </div>
   );
+  });
 }

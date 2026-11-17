@@ -3,6 +3,7 @@
  * On-device vision via MediaPipe Tasks. Models and WASM are self-hosted under /mediapipe,
  * so images never leave the browser for landmark detection.
  */
+import { BASE } from "./base";
 import type { FaceLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
 
 let face: Promise<FaceLandmarker> | null = null;
@@ -10,14 +11,14 @@ let pose: Promise<PoseLandmarker> | null = null;
 
 async function fileset() {
   const { FilesetResolver } = await import("@mediapipe/tasks-vision");
-  return FilesetResolver.forVisionTasks("/mediapipe");
+  return FilesetResolver.forVisionTasks(`${BASE}/mediapipe`);
 }
 
 export function faceLandmarker() {
   return (face ??= (async () => {
     const { FaceLandmarker } = await import("@mediapipe/tasks-vision");
     return FaceLandmarker.createFromOptions(await fileset(), {
-      baseOptions: { modelAssetPath: "/mediapipe/face_landmarker.task", delegate: "CPU" },
+      baseOptions: { modelAssetPath: `${BASE}/mediapipe/face_landmarker.task`, delegate: "CPU" },
       runningMode: "IMAGE",
       numFaces: 2,
     });
@@ -28,7 +29,7 @@ export function poseLandmarker() {
   return (pose ??= (async () => {
     const { PoseLandmarker } = await import("@mediapipe/tasks-vision");
     return PoseLandmarker.createFromOptions(await fileset(), {
-      baseOptions: { modelAssetPath: "/mediapipe/pose_landmarker_lite.task", delegate: "CPU" },
+      baseOptions: { modelAssetPath: `${BASE}/mediapipe/pose_landmarker_lite.task`, delegate: "CPU" },
       runningMode: "IMAGE",
       numPoses: 1,
     });

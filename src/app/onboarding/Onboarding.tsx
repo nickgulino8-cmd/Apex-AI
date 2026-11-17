@@ -1,13 +1,22 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ageFrom } from "@/lib/util";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/client";
 import { Chips, Slider, Toggle } from "@/components/forms/Choice";
 import { Spinner } from "@/components/ui";
 import { GOAL_OPTIONS, EQUIP_OPTIONS, SKIN_TYPES, CONCERN_OPTIONS } from "@/lib/options";
 
-export function Onboarding({ name, isMinor }: { name: string; isMinor: boolean }) {
+export function Onboarding({ existing: existingProp }: { existing: { name: string; isMinor: boolean } | null }) {
+  // Freeze at mount: the profile gets created mid-flow, which must not reshape the steps.
+  const [existing] = useState(existingProp);
+  const router = useRouter();
   const [step, setStep] = useState(0);
+  const [who, setWho] = useState({ name: existing?.name ?? "", birthDate: "" });
+  const age = who.birthDate ? ageFrom(who.birthDate) : null;
+  const isMinor = existing ? existing.isMinor : age !== null && age < 18;
+  const name = who.name || "there";
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [s, set] = useState({
@@ -27,10 +36,22 @@ export function Onboarding({ name, isMinor }: { name: string; isMinor: boolean }
   });
   const u = (p: Partial<typeof s>) => set((x) => ({ ...x, ...p }));
 
+  async function demo() {
+    setBusy(true);
+    try {
+      await api("/api/setup", { body: { demo: true } });
+      router.replace("/home");
+    } catch (e) {
+      setErr((e as Error).message);
+      setBusy(false);
+    }
+  }
+
   async function finish() {
     setBusy(true);
     setErr(null);
     try {
+      if (!existing) await api("/api/setup", { body: { name: who.name, birthDate: who.birthDate } });
       await api("/api/profile", {
         method: "PATCH",
         body: {
@@ -44,14 +65,27 @@ export function Onboarding({ name, isMinor }: { name: string; isMinor: boolean }
       });
       await api("/api/skincare/routine", { body: { skinType: s.skinType, concerns: s.concerns, sensitive: s.sensitive, pregnancy: s.pregnancy, save: true } });
       await api("/api/profile", { method: "PATCH", body: { onboarded: true } });
-      window.location.href = "/home";
+      router.replace("/home");
     } catch (e) {
       setErr((e as Error).message);
       setBusy(false);
     }
   }
 
+  const aboutYou = {
+    title: "Welcome to APEX",
+    body: (
+      <div className="space-y-5">
+        <p className="text-sm text-muted">Everything you enter stays on this phone. There&apos;s no account and no server.</p>
+        <Field label="First name"><input className="input" value={who.name} onChange={(e) => setWho({ ...who, name: e.target.value })} maxLength={60} autoComplete="given-name" /></Field>
+        <Field label="Date of birth (used for age-appropriate safeguards)"><input className="input" type="date" value={who.birthDate} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setWho({ ...who, birthDate: e.target.value })} /></Field>
+        {age !== null && age < 13 && <div className="text-sm text-bad">APEX AI is for people aged 13 and older.</div>}
+        <button type="button" onClick={demo} disabled={busy} className="text-xs text-accent underline-offset-2 hover:underline">Just exploring? Load sample data instead</button>
+      </div>
+    ),
+  };
   const steps = [
+    ...(existing ? [] : [aboutYou]),
     {
       title: "How do you train?",
       body: (
@@ -143,7 +177,7 @@ export function Onboarding({ name, isMinor }: { name: string; isMinor: boolean }
             {last ? (
               <button className="btn-primary" onClick={finish} disabled={busy}>{busy ? <Spinner /> : null} Build my plan</button>
             ) : (
-              <button className="btn-primary" onClick={() => setStep(step + 1)}>Continue <ArrowRight size={16} /></button>
+              <button className="btn-primary" disabled={!existing && step === 0 && (!who.name.trim() || age === null || age < 13)} onClick={() => setStep(step + 1)}>Continue <ArrowRight size={16} /></button>
             )}
           </div>
         </div>

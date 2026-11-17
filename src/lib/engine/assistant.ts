@@ -1,4 +1,3 @@
-import "server-only";
 import { COMPOUNDS, ACCESS_LABEL, type Compound } from "../data/compounds";
 import { EXERCISES, GROUP_LABEL, MUSCLE_GROUPS, available, exerciseName, byGroup, type MuscleGroup } from "../data/exercises";
 import { analyze, suggestToday } from "./analytics";

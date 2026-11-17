@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Brain, Trash2, Sparkles, WifiOff, Check, X } from "lucide-react";
 import clsx from "clsx";
 import { api } from "@/lib/client";
+import { localFetch } from "@/lib/local-fetch";
 import { Markdown } from "@/components/Markdown";
 import { Spinner } from "@/components/ui";
 
@@ -52,7 +53,7 @@ export function Chat({ mode, memoryOn, name }: { mode: Mode; memoryOn: boolean; 
     setMsgs((m) => [...m, { role: "user", content: t }, { role: "assistant", content: "" }]);
     abort.current = new AbortController();
     try {
-      const res = await fetch("/api/coach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: t, mode }), signal: abort.current.signal });
+      const res = await localFetch("/api/coach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: t, mode }), signal: abort.current.signal });
       if (!res.ok || !res.body) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error ?? "Message failed");
@@ -87,7 +88,7 @@ export function Chat({ mode, memoryOn, name }: { mode: Mode; memoryOn: boolean; 
   }
 
   return (
-    <div className="flex h-[calc(100dvh-15rem)] min-h-[440px] flex-col rounded-2xl border border-line/70 bg-surface lg:h-[calc(100dvh-14rem)]">
+    <div className="flex h-[calc(100dvh-19rem)] min-h-[380px] flex-col rounded-2xl border border-line/70 bg-surface lg:h-[calc(100dvh-14rem)]">
       <div className="flex items-center justify-between gap-2 border-b border-line/60 px-4 py-2.5 text-xs">
         <span className="flex items-center gap-1.5 text-muted">
           {ai === null ? <Spinner /> : ai ? <><Sparkles size={13} className="text-accent" /> AI mode · personalised to your data</> : <><WifiOff size={13} /> Offline mode · answers from your data & APEX databases</>}

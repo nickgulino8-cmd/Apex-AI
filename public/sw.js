@@ -1,19 +1,24 @@
-// APEX service worker: caches only static build assets for fast launches.
-// API responses, pages with personal data and photos are never cached.
-const CACHE = "apex-static-v1";
-self.addEventListener("install", () => self.skipWaiting());
+// APEX service worker: lets the installed app open offline. Caches only the app's own files
+// (code, icons, WASM). Your data lives in on-device storage, never in this cache.
+const CACHE = "apex-v2";
+const scope = new URL(self.registration.scope).pathname; // e.g. "/Apex-AI/"
+self.addEventListener("install", (e) => {
+  self.skipWaiting();
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll([scope, scope + "home/", scope + "sqljs/sql-wasm-browser.wasm"]).catch(() => {})));
+});
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
-  if (e.request.method !== "GET" || url.origin !== location.origin) return;
-  const isStatic = url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/mediapipe/");
-  if (isStatic) {
+  if (e.request.method !== "GET" || url.origin !== location.origin || !url.pathname.startsWith(scope)) return;
+  const immutable = url.pathname.includes("/_next/static/") || url.pathname.includes("/mediapipe/") || url.pathname.includes("/sqljs/") || url.pathname.includes("/icons/");
+  if (immutable) {
+    // Cache-first for versioned assets.
     e.respondWith(caches.open(CACHE).then(async (c) => (await c.match(e.request)) || fetch(e.request).then((r) => { if (r.ok) c.put(e.request, r.clone()); return r; })));
-  } else if (e.request.mode === "navigate") {
-    e.respondWith(fetch(e.request).catch(() => new Response(
-      '<!doctype html><meta name=viewport content="width=device-width,initial-scale=1"><body style="background:#07080a;color:#eceef2;font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><p style="letter-spacing:.3em;font-size:13px">APEX·AI</p><h1 style="font-weight:600">You\'re offline</h1><p style="color:#969ca8">Reconnect to sync your training and routines.</p></div>',
-      { headers: { "Content-Type": "text/html" } })));
+  } else {
+    // Network-first for pages so updates arrive; fall back to cache offline.
+    e.respondWith(fetch(e.request).then((r) => { if (r.ok) caches.open(CACHE).then((c) => c.put(e.request, r.clone())); return r; })
+      .catch(async () => (await caches.match(e.request)) || (await caches.match(scope + "home/")) || Response.error()));
   }
 });

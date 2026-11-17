@@ -1,4 +1,3 @@
-import "server-only";
 import { SAFETY } from "./ai";
 
 export type CoachMode = "assistant" | "appearance";

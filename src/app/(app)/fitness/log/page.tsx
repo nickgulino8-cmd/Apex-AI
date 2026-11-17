@@ -1,16 +1,16 @@
-import { requireUser } from "@/lib/auth";
+"use client";
+import { useLocalView, useSP } from "@/components/Local";
 import { db } from "@/lib/db";
 import { activeProgram } from "@/lib/repo";
 import { EXERCISES } from "@/lib/data/exercises";
 import { PageHeader } from "@/components/ui";
 import { WorkoutLogger } from "@/components/fitness/WorkoutLogger";
 
-export const metadata = { title: "Log workout" };
-export const dynamic = "force-dynamic";
 
-export default async function LogPage({ searchParams }: { searchParams: Promise<{ day?: string }> }) {
-  const user = await requireUser();
-  const { day } = await searchParams;
+export default function LogPage() {
+  const searchParams = useSP();
+  return useLocalView((user) => {
+  const { day } = searchParams;
   const prog = activeProgram(user.id);
   const pd = day ? prog?.plan.days.find((d) => d.key === day) ?? null : null;
 
@@ -40,4 +40,5 @@ export default async function LogPage({ searchParams }: { searchParams: Promise<
       />
     </div>
   );
+  });
 }

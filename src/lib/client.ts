@@ -1,4 +1,5 @@
 "use client";
+import { localFetch } from "./local-fetch";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string) {
@@ -8,7 +9,7 @@ export class ApiError extends Error {
 
 /** Fetch wrapper: JSON in/out, throws ApiError with the server's message. */
 export async function api<T = unknown>(url: string, opts: { method?: string; body?: unknown; signal?: AbortSignal } = {}): Promise<T> {
-  const res = await fetch(url, {
+  const res = await localFetch(url, {
     method: opts.method ?? (opts.body !== undefined ? "POST" : "GET"),
     headers: opts.body !== undefined ? { "Content-Type": "application/json" } : undefined,
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import clsx from "clsx";
-import { Home, ScanFace, Droplets, Dumbbell, LibraryBig, Sparkles, LineChart, UserRound, MoreHorizontal, X, LogOut } from "lucide-react";
+import { Home, ScanFace, Droplets, Dumbbell, LibraryBig, Sparkles, LineChart, UserRound, MoreHorizontal, X } from "lucide-react";
 
 export const NAV = [
   { href: "/home", label: "Home", icon: Home },
@@ -35,10 +35,6 @@ function Logo() {
   );
 }
 
-async function logout() {
-  await fetch("/api/auth/logout", { method: "POST" });
-  window.location.href = "/login";
-}
 
 export function Sidebar({ name }: { name: string }) {
   const path = usePathname();
@@ -64,9 +60,9 @@ export function Sidebar({ name }: { name: string }) {
           );
         })}
       </nav>
-      <div className="flex items-center justify-between rounded-xl border border-line/60 px-3 py-2.5 text-sm">
+      <div className="rounded-xl border border-line/60 px-3 py-2.5 text-sm">
         <span className="truncate text-muted">{name}</span>
-        <button onClick={logout} className="text-dim hover:text-fg" aria-label="Sign out"><LogOut size={16} /></button>
+        <div className="mt-0.5 text-[11px] text-dim">Data stored on this device</div>
       </div>
     </aside>
   );
@@ -111,9 +107,6 @@ export function MobileNav() {
                   <Icon size={18} className="text-accent" /> {label}
                 </Link>
               ))}
-              <button onClick={logout} className="flex items-center gap-3 rounded-xl border border-line/60 bg-raised/40 px-3 py-3 text-sm text-muted">
-                <LogOut size={18} /> Sign out
-              </button>
             </div>
           </div>
         </div>

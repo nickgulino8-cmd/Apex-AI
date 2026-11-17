@@ -1,5 +1,6 @@
+"use client";
+import { useLocalView } from "@/components/Local";
 import { CheckCircle2, AlertTriangle, Info } from "lucide-react";
-import { requireUser } from "@/lib/auth";
 import { db, json } from "@/lib/db";
 import { today, addDays } from "@/lib/util";
 import { activeProgram, goalsFor, habitHistory, skincareHistory, workoutData } from "@/lib/repo";
@@ -11,11 +12,9 @@ import { SessionsChart, StrengthChart, SleepChart, Heatmap, RatingTrend } from "
 import { Goals } from "@/components/progress/Goals";
 import { Gallery } from "@/components/progress/Gallery";
 
-export const metadata = { title: "Progress" };
-export const dynamic = "force-dynamic";
 
-export default async function ProgressPage() {
-  const user = await requireUser();
+export default function ProgressPage() {
+  return useLocalView((user) => {
   const d = today();
   const prog = activeProgram(user.id);
   const { workouts, sets, recovery } = workoutData(user.id, 365);
@@ -98,4 +97,5 @@ export default async function ProgressPage() {
       </div>
     </div>
   );
+  });
 }
