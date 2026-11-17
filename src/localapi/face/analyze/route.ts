@@ -4,6 +4,7 @@ import { handle, body, ok } from "@/lib/api";
 import { apiUser } from "@/lib/auth";
 import { structured, AiUnavailableError } from "@/lib/ai";
 import { FaceRating, FACE_RATING_SYSTEM } from "@/lib/ratings";
+import { combineRatings } from "@/lib/ratings-combine";
 import { FaceReport, FACE_SYSTEM } from "@/lib/analysis";
 import { preparePhoto, savePhoto } from "@/lib/photo-pipeline";
 import { id } from "@/lib/util";
@@ -33,8 +34,10 @@ const Metrics = z.object({
 
 export const POST = handle(async (req: Request) => {
   const user = await apiUser(req);
-  const b = await body(req, z.object({ image: z.string().max(9_000_000), metrics: Metrics.nullable(), save: z.boolean(), consent: z.boolean() }));
+  const b = await body(req, z.object({ image: z.string().max(9_000_000), extraImages: z.array(z.string().max(9_000_000)).max(2).default([]), metrics: Metrics.nullable(), save: z.boolean(), consent: z.boolean() }));
   const img = preparePhoto(user, b.image, b.consent);
+  // Extra shots from the same session are used only to steady the rating; they are never stored.
+  const extras = b.extraImages.map((x) => preparePhoto(user, x, b.consent));
   const p = user.profile;
   const m = b.metrics;
   const prompt = [
@@ -46,26 +49,23 @@ export const POST = handle(async (req: Request) => {
   ].join("\n");
   const image = [{ data: img.base64, mediaType: img.mediaType }];
   const wantRating = p.show_ratings && !user.isMinor;
-  // The rating runs in parallel as its own call, so a declined rating never blocks the skin report.
-  const [reportRes, ratingRes] = await Promise.allSettled([
+  // Ratings run in parallel as their own calls (one per shot), so a declined rating never blocks the skin report.
+  const ratingPrompt = `${prompt}\nAccount holder's age (confirmed by date of birth at setup): ${user.age}.\nDimorphism reference selected by the user: ${p.rating_reference ?? "none selected"}.\nRate this face.`;
+  const shots = [img, ...extras];
+  const [reportRes, ...ratingRes] = await Promise.allSettled([
     structured({ system: FACE_SYSTEM, prompt, images: image, schema: FaceReport }),
-    wantRating
-      ? structured({
-          system: FACE_RATING_SYSTEM,
-          prompt: `${prompt}\nAccount holder's age (confirmed by date of birth at setup): ${user.age}.\nDimorphism reference selected by the user: ${p.rating_reference ?? "none selected"}.\nRate this face.`,
-          images: image,
-          schema: FaceRating,
-        })
-      : Promise.resolve(null),
+    ...(wantRating ? shots.map((s) => structured({ system: FACE_RATING_SYSTEM, prompt: ratingPrompt, images: [{ data: s.base64, mediaType: s.mediaType }], schema: FaceRating })) : []),
   ]);
   if (reportRes.status === "rejected") throw reportRes.reason;
-  const report = reportRes.value;
-  const ratings = ratingRes.status === "fulfilled" && ratingRes.value?.ratable ? ratingRes.value : null;
-  const rating_error = !wantRating
+  const report = reportRes.value as Awaited<ReturnType<typeof structured<typeof FaceReport>>>;
+  const ratingValues = ratingRes.map((r) => (r.status === "fulfilled" ? (r.value as FaceRating) : null));
+  const ratings = wantRating ? combineRatings(ratingValues) : null;
+  const firstErr = ratingRes.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+  const declined = ratingValues.find((r) => r && !r.ratable);
+  const rating_error = !wantRating || ratings
     ? null
-    : ratingRes.status === "rejected"
-      ? ratingRes.reason instanceof AiUnavailableError ? ratingRes.reason.message : "Rating unavailable for this photo."
-      : ratingRes.value && !ratingRes.value.ratable ? ratingRes.value.reason_if_not || "This photo couldn't be rated." : null;
+    : declined ? declined.reason_if_not || "This photo couldn't be rated."
+      : firstErr ? (firstErr.reason instanceof AiUnavailableError ? firstErr.reason.message : "Rating unavailable for this photo.") : "Rating unavailable for this photo.";
 
   const PREG_EXCLUDE = ["retinol", "retinaldehyde", "adapalene", "tretinoin", "tazarotene", "trifarotene", "isotretinoin", "spironolactone", "hydroquinone", "finasteride"];
   if (p.pregnancy_flag) {

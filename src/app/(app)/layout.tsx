@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { Sidebar, MobileNav } from "@/components/Nav";
 import { useDb, PageSkeleton, WithSuspense } from "@/components/Local";
+import { AppLock } from "@/components/AppLock";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { ready, error } = useDb();
@@ -14,6 +15,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (needsSetup) router.replace("/onboarding");
   }, [needsSetup, router]);
   return (
+    <AppLock>
     <div className="min-h-dvh">
       <Sidebar name={user?.name ?? ""} />
       <MobileNav />
@@ -21,5 +23,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {error ? <div className="card card-pad text-sm text-bad">Couldn&apos;t open on-device storage: {error}</div> : !user || needsSetup ? <PageSkeleton /> : <WithSuspense>{children}</WithSuspense>}
       </main>
     </div>
+    </AppLock>
   );
 }

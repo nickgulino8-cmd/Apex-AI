@@ -8,6 +8,7 @@ import type { FaceLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
 
 let face: Promise<FaceLandmarker> | null = null;
 let pose: Promise<PoseLandmarker> | null = null;
+let faceVideo: Promise<FaceLandmarker> | null = null;
 
 async function fileset() {
   const { FilesetResolver } = await import("@mediapipe/tasks-vision");
@@ -43,4 +44,16 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = rej;
     img.src = src;
   });
+}
+
+/** Separate VIDEO-mode instance for the live capture guide. */
+export function faceLandmarkerVideo() {
+  return (faceVideo ??= (async () => {
+    const { FaceLandmarker } = await import("@mediapipe/tasks-vision");
+    return FaceLandmarker.createFromOptions(await fileset(), {
+      baseOptions: { modelAssetPath: `${BASE}/mediapipe/face_landmarker.task`, delegate: "CPU" },
+      runningMode: "VIDEO",
+      numFaces: 2,
+    });
+  })().catch((e) => { faceVideo = null; throw e; }));
 }

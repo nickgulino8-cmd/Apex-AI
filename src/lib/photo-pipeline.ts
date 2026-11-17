@@ -10,7 +10,7 @@ export function preparePhoto(user: User, dataUrl: string, consent: boolean) {
     if (!consent) throw new HttpError(400, "Please review and accept the photo privacy notice first.");
     db.prepare("UPDATE profiles SET photo_consent_at = datetime('now') WHERE user_id = ?").run(user.id);
   }
-  if (!rateLimit(`ai-photo:${user.id}`, 20, 24 * 3600 * 1000)) throw new HttpError(429, "Daily analysis limit reached (20). Try again tomorrow.");
+  if (!rateLimit(`ai-photo:${user.id}`, 45, 24 * 3600 * 1000)) throw new HttpError(429, "Daily photo limit reached (45). Try again tomorrow.");
   try {
     return decodeImage(dataUrl);
   } catch (e) {

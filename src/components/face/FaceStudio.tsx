@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { RotateCcw, ScanFace, ShieldCheck, Layers as LayersIcon, Sparkles, AlertTriangle } from "lucide-react";
+import { RotateCcw, ScanFace, ShieldCheck, Layers as LayersIcon, Sparkles, AlertTriangle, Plus, X } from "lucide-react";
 import clsx from "clsx";
 import { api } from "@/lib/client";
 import { computeMetrics, describe, poseWarning, toPixels, type Metrics, type Pt } from "@/lib/face-metrics";
@@ -26,6 +26,27 @@ export function FaceStudio({ aiReady, consented, defaultSave, compounds, showRat
   const [consent, setConsent] = useState(consented);
   const [focus, setFocus] = useState<string | null>(null);
   const [ref, setRef] = useState(ratingRef);
+  // Extra shots from the same session steady the rating (averaged); they're never saved.
+  const [extras, setExtras] = useState<{ src: string; metrics: Metrics }[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [extraErr, setExtraErr] = useState<string | null>(null);
+
+  async function addExtra(src: string) {
+    setAdding(false);
+    setExtraErr(null);
+    try {
+      const img = await loadImage(src);
+      const res = (await faceLandmarker()).detect(img);
+      if (res.faceLandmarks.length !== 1) return setExtraErr("That shot didn't show exactly one face. Try again.");
+      setExtras((x) => [...x, { src, metrics: computeMetrics(toPixels(res.faceLandmarks[0], img.naturalWidth, img.naturalHeight)) }].slice(0, 2));
+    } catch {
+      setExtraErr("Couldn't read that shot.");
+    }
+  }
+  const allMetrics = [det.metrics, ...extras.map((e) => e.metrics)].filter((m): m is Metrics => !!m);
+  const avgMetrics: Metrics | null = allMetrics.length
+    ? (Object.fromEntries(Object.keys(allMetrics[0]).map((k) => [k, allMetrics.reduce((s, m) => s + (m[k as keyof Metrics] as number), 0) / allMetrics.length])) as Metrics)
+    : null;
 
   useEffect(() => {
     if (!photo) return;
@@ -58,6 +79,8 @@ export function FaceStudio({ aiReady, consented, defaultSave, compounds, showRat
     setReport(null);
     setErr(null);
     setDet({ status: "idle", P: null, metrics: null, w: 0, h: 0 });
+    setExtras([]);
+    setAdding(false);
   }
 
   async function analyse() {
@@ -65,7 +88,7 @@ export function FaceStudio({ aiReady, consented, defaultSave, compounds, showRat
     setBusy(true);
     setErr(null);
     try {
-      const r = await api<{ report: FaceReportT }>("/api/face/analyze", { body: { image: photo, metrics: det.metrics, save, consent } });
+      const r = await api<{ report: FaceReportT }>("/api/face/analyze", { body: { image: photo, extraImages: extras.map((e) => e.src), metrics: avgMetrics, save, consent } });
       setReport(r.report);
       if (!r.report.image_quality.usable) setErr(r.report.image_quality.issues.join(" ") || "The photo wasn't clear enough to analyse.");
       router.refresh();
@@ -84,7 +107,7 @@ export function FaceStudio({ aiReady, consented, defaultSave, compounds, showRat
   if (!photo) {
     return (
       <div className="space-y-4">
-        <PhotoInput onPhoto={setPhoto} />
+        <PhotoInput onPhoto={setPhoto} guide hint="The camera guide checks your angle, distance and lighting, then takes the photo automatically. For best results use even, front-facing light, no filters." />
         <div className="flex gap-3 text-xs text-muted">
           <ShieldCheck size={16} className="shrink-0 text-accent" />
           <p>Landmark measurement runs entirely on your device. Only when you choose <em>Analyse skin</em> is the photo sent to the AI provider for that single analysis. It is never used to identify you, and it&apos;s only stored if you tick &quot;Save to progress&quot;.</p>
@@ -119,9 +142,9 @@ export function FaceStudio({ aiReady, consented, defaultSave, compounds, showRat
 
         {det.metrics && (
           <div>
-            <div className="label mb-3 flex items-center gap-2"><ScanFace size={13} /> On-device measurements</div>
+            <div className="label mb-3 flex items-center gap-2"><ScanFace size={13} /> On-device measurements{allMetrics.length > 1 ? ` · averaged over ${allMetrics.length} shots` : ""}</div>
             <div className="grid gap-2 sm:grid-cols-2">
-              {describe(det.metrics).map((d) => (
+              {describe(avgMetrics ?? det.metrics).map((d) => (
                 <div key={d.label} className="rounded-xl border border-line/60 bg-raised/30 p-3">
                   <div className="flex items-baseline justify-between gap-2"><span className="text-xs text-muted">{d.label}</span><span className="font-mono text-sm tabular-nums">{d.value}</span></div>
                   <p className="mt-1 text-[11px] leading-snug text-dim">{d.note}</p>
@@ -137,7 +160,7 @@ export function FaceStudio({ aiReady, consented, defaultSave, compounds, showRat
             <div className="flex items-center gap-2 font-medium"><Sparkles size={16} className="text-accent" /> AI skin analysis</div>
             <p className="mt-1 text-sm text-muted">Skin observations with annotated zones, OTC and prescription options{showRatings ? ", plus a four-pillar facial rating (harmony, angularity, dimorphism, features)" : ""}.</p>
             {!aiReady ? (
-              <Notice tone="warn"><span className="flex gap-2"><AlertTriangle size={16} className="shrink-0" /> AI analysis isn&apos;t configured on this server (missing ANTHROPIC_API_KEY). On-device measurements above still work.</span></Notice>
+              <Notice tone="warn"><span className="flex gap-2"><AlertTriangle size={16} className="shrink-0" /> AI analysis needs your Anthropic API key. Add it in Profile → AI. The on-device measurements above work without it.</span></Notice>
             ) : (
               <div className="mt-4 space-y-3">
                 {!consented && (
@@ -145,6 +168,28 @@ export function FaceStudio({ aiReady, consented, defaultSave, compounds, showRat
                     <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 accent-[rgb(var(--accent))]" />
                     <span>I agree to send this photo to APEX&apos;s AI provider for a one-time skin analysis. It&apos;s not used for identification or to train models through APEX, and I can delete anything saved.</span>
                   </label>
+                )}
+                {showRatings && (
+                  <div className="rounded-xl border border-line/60 bg-raised/30 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm">Rating shots <span className="font-mono text-muted">{1 + extras.length}/3</span></span>
+                      {extras.length < 2 && !adding && <button type="button" onClick={() => setAdding(true)} className="btn-ghost py-1 text-xs"><Plus size={13} /> Add shot</button>}
+                    </div>
+                    <p className="mt-1 text-[11px] text-dim">Add 1–2 more shots in the same light and position. The rating is averaged across them, which smooths out photo-to-photo swings. Extra shots aren&apos;t saved.</p>
+                    {extras.length > 0 && (
+                      <div className="mt-2 flex gap-2">
+                        {extras.map((e, i) => (
+                          <div key={i} className="relative h-16 w-12 overflow-hidden rounded-lg border border-line">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={e.src} alt={`Extra shot ${i + 1}`} className="h-full w-full object-cover" />
+                            <button type="button" onClick={() => setExtras((x) => x.filter((_, j) => j !== i))} className="absolute right-0.5 top-0.5 rounded bg-black/60 p-0.5 text-white" aria-label="Remove shot"><X size={10} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {adding && <div className="mt-3"><PhotoInput onPhoto={addExtra} guide /><button type="button" onClick={() => setAdding(false)} className="mt-2 text-xs text-muted">Cancel</button></div>}
+                    {extraErr && <p className="mt-2 text-xs text-bad">{extraErr}</p>}
+                  </div>
                 )}
                 {showRatings && (
                   <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -157,9 +202,9 @@ export function FaceStudio({ aiReady, consented, defaultSave, compounds, showRat
                 )}
                 <label className="flex items-center gap-2.5 text-sm">
                   <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} className="accent-[rgb(var(--accent))]" />
-                  Save photo to my private progress gallery (encrypted)
+                  Save photo to my private progress gallery (stays on this device)
                 </label>
-                <button onClick={analyse} disabled={busy || !consent} className="btn-primary w-full">{busy ? <><Spinner /> Analysing — about 20–40 s</> : "Analyse skin"}</button>
+                <button onClick={analyse} disabled={busy || !consent} className="btn-primary w-full">{busy ? <><Spinner /> Analysing, about 20–40 s</> : extras.length ? `Analyse skin + rate ${1 + extras.length} shots` : "Analyse skin"}</button>
               </div>
             )}
           </div>

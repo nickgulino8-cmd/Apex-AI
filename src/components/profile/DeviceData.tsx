@@ -5,6 +5,7 @@ import { api } from "@/lib/client";
 import { localFetch } from "@/lib/local-fetch";
 import { exportDb, replaceDb } from "@/lib/db";
 import { getApiKey, setApiKey } from "@/lib/ai";
+import { disableLock } from "@/lib/lock";
 import { BASE } from "@/lib/base";
 import { Notice } from "@/components/ui";
 
@@ -68,6 +69,7 @@ export function DeviceData({ onChange }: { onChange: () => void }) {
             if (!confirm("Erase EVERYTHING APEX stores on this device? This can't be undone. Download a backup first if you might want it.")) return;
             await api("/api/account", { method: "DELETE" });
             setApiKey(null);
+            disableLock();
             window.location.href = `${BASE}/`;
           }}>
             <Trash2 size={14} /> Erase everything

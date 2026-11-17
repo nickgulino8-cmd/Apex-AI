@@ -6,9 +6,11 @@ import clsx from "clsx";
 import { Plus, Trash2, Check, Timer, Search, Info, X } from "lucide-react";
 import { api, localDate } from "@/lib/client";
 import { Notice, Spinner } from "@/components/ui";
+import { EXERCISE_BY_ID } from "@/lib/data/exercises";
+import { suggestLoad, type Suggestion } from "@/lib/engine/progression";
 
 type SetE = { weight: string; reps: string; rpe: string; done: boolean };
-type Entry = { exerciseId: string; target?: string; sets: SetE[] };
+type Entry = { exerciseId: string; target?: string; suggestion?: Suggestion | null; sets: SetE[] };
 type Ex = { id: string; name: string; group: string };
 
 export function WorkoutLogger({
@@ -24,12 +26,20 @@ export function WorkoutLogger({
   const router = useRouter();
   const draftKey = `apex-draft-${dayKey ?? "free"}`;
   const byId = useMemo(() => new Map(exercises.map((e) => [e.id, e])), [exercises]);
+  const u = (units === "lb" ? "lb" : "kg") as "kg" | "lb";
   const fresh = (): Entry[] =>
-    planned.map((p) => ({
-      exerciseId: p.exerciseId,
-      target: `${p.sets} × ${p.reps} · ${p.rir}`,
-      sets: Array.from({ length: p.sets }, (_, i) => ({ weight: last[p.exerciseId]?.[i]?.weight?.toString() ?? last[p.exerciseId]?.[0]?.weight?.toString() ?? "", reps: "", rpe: "", done: false })),
-    }));
+    planned.map((p) => {
+      const ex = EXERCISE_BY_ID.get(p.exerciseId);
+      const suggestion = ex ? suggestLoad(ex, p.reps, last[p.exerciseId], u) : null;
+      const prefill = (i: number) =>
+        suggestion && suggestion.weight > 0 ? String(suggestion.weight) : last[p.exerciseId]?.[i]?.weight?.toString() ?? last[p.exerciseId]?.[0]?.weight?.toString() ?? "";
+      return {
+        exerciseId: p.exerciseId,
+        target: `${p.sets} × ${p.reps} · ${p.rir}`,
+        suggestion,
+        sets: Array.from({ length: p.sets }, (_, i) => ({ weight: prefill(i), reps: "", rpe: "", done: false })),
+      };
+    });
   const [entries, setEntries] = useState<Entry[]>(fresh);
   const [title, setTitle] = useState(dayName?.replace(/^Day \d+ · /, "") ?? "Workout");
   const [date, setDate] = useState(localDate());
@@ -109,6 +119,13 @@ export function WorkoutLogger({
                   {e.target && <span className="text-accent">{e.target}</span>}
                   {prev && <span>{e.target ? " · " : ""}Last time: {prev.map((p) => `${p.weight}×${p.reps}`).join(", ")}</span>}
                 </div>
+                {e.suggestion && (
+                  <div className={clsx("mt-1.5 inline-flex items-start gap-1.5 rounded-lg border px-2 py-1 text-[11px]",
+                    e.suggestion.kind === "increase" ? "border-ok/40 bg-ok/10 text-ok" : e.suggestion.kind === "decrease" ? "border-warn/40 bg-warn/10 text-warn" : "border-line bg-raised/40 text-muted")}>
+                    {e.suggestion.weight > 0 && <span className="font-mono font-semibold">{e.suggestion.weight} {u}</span>}
+                    <span>{e.suggestion.reason}</span>
+                  </div>
+                )}
               </div>
               <button onClick={() => delEx(i)} className="text-dim hover:text-bad" aria-label="Remove exercise"><Trash2 size={16} /></button>
             </div>

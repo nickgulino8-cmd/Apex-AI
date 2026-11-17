@@ -145,3 +145,66 @@ test("face metrics: canthal tilt sign and roll invariance", () => {
   assert.ok(a.fwhr > 1.5 && a.fwhr < 2.1, `fwhr ${a.fwhr}`);
   assert.ok(a.midfaceRatio > 0.8 && a.midfaceRatio < 1.1, `midface ${a.midfaceRatio}`);
 });
+
+import { suggestLoad, parseRange } from "../src/lib/engine/progression";
+test("progression: double progression suggestions", () => {
+  const bench = EXERCISE_BY_ID.get("barbell-bench-press")!;
+  const squat = EXERCISE_BY_ID.get("back-squat")!;
+  const curl = EXERCISE_BY_ID.get("dumbbell-curl")!;
+  assert.deepEqual(parseRange("6–10"), { lo: 6, hi: 10 });
+  assert.equal(parseRange("20–45 s")?.lo, 20);
+  assert.equal(suggestLoad(bench, "6–10", [{ weight: 60, reps: 10 }, { weight: 60, reps: 10 }, { weight: 60, reps: 11 }], "kg")!.weight, 62.5);
+  assert.equal(suggestLoad(squat, "6–10", [{ weight: 100, reps: 10 }, { weight: 100, reps: 10 }], "kg")!.weight, 105);
+  assert.equal(suggestLoad(squat, "6–10", [{ weight: 225, reps: 10 }], "lb")!.weight, 235);
+  const hold = suggestLoad(bench, "6–10", [{ weight: 60, reps: 9 }, { weight: 60, reps: 7 }], "kg")!;
+  assert.equal(hold.kind, "hold"); assert.equal(hold.weight, 60);
+  const back = suggestLoad(bench, "6–10", [{ weight: 60, reps: 3 }], "kg")!;
+  assert.equal(back.kind, "decrease"); assert.equal(back.weight, 55);
+  assert.equal(suggestLoad(curl, "10–15", [{ weight: 12, reps: 15 }, { weight: 12, reps: 15 }], "kg")!.weight, 14);
+  assert.equal(suggestLoad(curl, "10–15", undefined, "kg")!.kind, "first");
+  assert.equal(suggestLoad(EXERCISE_BY_ID.get("push-up")!, "6–10", [{ weight: 0, reps: 12 }], "kg")!.kind, "reps");
+});
+
+import { combineRatings } from "../src/lib/ratings-combine";
+test("ratings: averaging across shots", () => {
+  const mk = (score: number, h: number, ratable = true) => ({
+    ratable, reason_if_not: "", overall: { score, low: score - 0.5, high: score + 0.5 },
+    pillars: [{ pillar: "harmony", score: h, evidence: "e", note: "" }, { pillar: "angularity", score: 5, evidence: "e", note: "" }],
+    leans_toward: "harmony", leans_summary: "s", strengths: [], modifiable: [], caveats: [],
+  });
+  assert.equal(combineRatings([null, mk(5, 6, false)]), null);
+  assert.equal(combineRatings([mk(6, 7)])!.overall.score, 6);
+  const c = combineRatings([mk(6, 7), mk(7, 8), mk(6.5, 7.5)])!;
+  assert.equal(c.overall.score, 6.5);
+  assert.equal(c.pillars.find((p) => p.pillar === "harmony")!.score, 7.5);
+  assert.ok(c.overall.low <= 6 && c.overall.high >= 7, "range covers every shot");
+  assert.equal(c.photos, 3);
+  assert.match(c.caveats[0], /Averaged across 3 photos/);
+});
+
+import { evaluateFrame } from "../src/lib/capture-guide";
+test("capture guide: flags pose, distance and lighting", () => {
+  const face = (cx: number, width: number, rollPx = 0): Pt[] => {
+    const P: Pt[] = Array.from({ length: 478 }, () => ({ x: cx, y: 640 }));
+    const set = (i: number, x: number, y: number) => { P[i] = { x: cx + x, y: 640 + y + (x / width) * rollPx }; };
+    set(234, -width / 2, -40); set(454, width / 2, -40); set(1, 0, 0);
+    set(33, -width * 0.32, -90); set(263, width * 0.32, -90); set(133, -width * 0.12, -90); set(362, width * 0.12, -90);
+    set(10, 0, -260); set(9, 0, -110); set(2, 0, 30); set(152, 0, 200); set(0, 0, 50); set(17, 0, 90);
+    set(172, -width * 0.4, 120); set(397, width * 0.4, 120); set(61, -60, 80); set(291, 60, 80); set(129, -40, 20); set(358, 40, 20);
+    return P;
+  };
+  const frame = { w: 720, h: 1280 };
+  const good = evaluateFrame([face(360, 330)], frame, { mean: 140, leftRight: 0.05 });
+  assert.ok(good.every((c) => c.ok), JSON.stringify(good.filter((c) => !c.ok)));
+  const far = evaluateFrame([face(360, 150)], frame, { mean: 140, leftRight: 0.05 });
+  assert.equal(far.find((c) => c.key === "dist")!.ok, false);
+  const off = evaluateFrame([face(150, 330)], frame, { mean: 140, leftRight: 0.05 });
+  assert.equal(off.find((c) => c.key === "center")!.ok, false);
+  const side = evaluateFrame([face(360, 330)], frame, { mean: 140, leftRight: 0.5 });
+  assert.equal(side.find((c) => c.key === "even")!.ok, false);
+  const dark = evaluateFrame([face(360, 330)], frame, { mean: 30, leftRight: 0.05 });
+  assert.equal(dark.find((c) => c.key === "bright")!.ok, false);
+  const tilt = evaluateFrame([face(360, 330, 60)], frame, { mean: 140, leftRight: 0.05 });
+  assert.equal(tilt.find((c) => c.key === "roll")!.ok, false);
+  assert.equal(evaluateFrame([], frame, null)[0].ok, false);
+});

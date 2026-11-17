@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Check, Download, Trash2, Brain, ShieldCheck, Moon, Sun } from "lucide-react";
 import { api } from "@/lib/client";
 import { DeviceData } from "./DeviceData";
+import { LockSettings } from "./LockSettings";
 import { Chips, Slider, Toggle } from "@/components/forms/Choice";
 import { Notice, Spinner } from "@/components/ui";
 import { GOAL_OPTIONS, EQUIP_OPTIONS } from "@/lib/options";
@@ -108,6 +109,8 @@ export function ProfileForm({ name, email, age, isMinor, profile, memories, aiRe
         )}
         <p className="text-xs text-dim">Photos you choose to analyse are sent to Anthropic&apos;s API for that one request, using your key. Nothing else leaves this device.</p>
       </section>
+
+      <LockSettings />
 
       <DeviceData onChange={() => router.refresh()} />
 
