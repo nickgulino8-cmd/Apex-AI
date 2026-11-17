@@ -68,3 +68,15 @@ src/
 - Reference links open pre-searched queries on DailyMed, MedlinePlus, NCBI Bookshelf and PubMed rather than specific article URLs, so they can't go stale or point at the wrong paper.
 - SQLite suits single-instance deployments. For horizontal scaling, swap `db.ts` for Postgres (the SQL is portable) and move photos to object storage.
 - AI photo analysis, the physique scan and conversational coaching haven't been exercised against the live API in this build environment, which had no API key. Request shapes are type-checked against the SDK and the schemas are verified to convert.
+
+## Deploying
+
+The app keeps its SQLite database and encrypted photos on disk, so deploy it somewhere with a **persistent volume**: Render, Fly.io, Railway, or any Docker host. Serverless platforms like Vercel won't keep the database between requests.
+
+1. Build from the included `Dockerfile` and mount a persistent volume at `/data`.
+2. Set these environment variables:
+   - `ANTHROPIC_API_KEY`: enables the AI features.
+   - `APEX_ENCRYPTION_KEY`: 64 hex characters. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+3. Optionally, seed demo data once with `npm run seed:demo`.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs typecheck, tests and build on every push and pull request.
