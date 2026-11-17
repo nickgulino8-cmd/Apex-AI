@@ -10,6 +10,10 @@ cp .env.example .env # add ANTHROPIC_API_KEY to enable AI features
 npm run dev          # http://localhost:3000
 ```
 
+Demo data: `npm run seed:demo`, then sign in as `demo@apex.local` / `apex-demo-2026` (8 weeks of training, habits, skincare and sleep history).
+
+Install on a phone: open the site in Safari (Share → Add to Home Screen) or Chrome (menu → Install app). It runs full-screen like a native app.
+
 Production: `npm run build && npm start`. Set `APEX_ENCRYPTION_KEY` (64 hex chars) in production. Without it, the server refuses to store photos.
 
 Tests: `npm test` (engines, data integrity, safety rules, Markdown renderer). Typecheck: `npm run typecheck`.

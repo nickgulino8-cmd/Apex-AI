@@ -13,4 +13,4 @@ export function middleware(req: NextRequest) {
   return NextResponse.next({ request: { headers: h } });
 }
 
-export const config = { matcher: ["/((?!_next|mediapipe|favicon|.*\\.(?:png|svg|ico|wasm|task)$).*)"] };
+export const config = { matcher: ["/((?!_next|mediapipe|icons|favicon|icon.png|manifest.webmanifest|sw.js|.*\\.(?:png|svg|ico|wasm|task)$).*)"] };
