@@ -45,7 +45,7 @@ src/
       assistant.ts   AI context builder + offline assistant
     data/
       exercises-*.ts 89 exercises × 11 muscle groups
-      compounds.ts   50 skincare / dermatology / hormonal / anabolic education entries
+      compounds.ts   53 skincare / dermatology / hormonal / anabolic education entries
   components/        UI kit, anatomy map, movement demos, feature components
 ```
 
