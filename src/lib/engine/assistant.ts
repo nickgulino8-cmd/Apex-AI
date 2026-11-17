@@ -6,6 +6,7 @@ import { buildRoutine, type SkinType } from "./routine";
 import { activeProgram, goalsFor, habitsFor, memoriesFor, skincareHistory, skincareRoutine, workoutData } from "../repo";
 import type { User } from "../auth";
 import { today } from "../util";
+import { db, json } from "../db";
 
 /**
  * Builds the personal context the AI assistant sees, and a local (no-API) assistant that
@@ -75,6 +76,12 @@ export function buildContext(user: User): string {
     `Skincare adherence last 14 days: AM ${skin.filter((x) => x.am).length}/14, PM ${skin.filter((x) => x.pm).length}/14.`,
     habits.length ? `Habits (done in last 7 days): ${habits.map((h) => `${h.name} ${h.last7}/7`).join(", ")}.` : "",
     goals.length ? `Active goals: ${goals.map((g) => `${g.title} (${g.progress}%)`).join("; ")}.` : "",
+    (() => {
+      if (!p.show_ratings || user.isMinor) return "";
+      const r = db.prepare("SELECT created_at, ratings FROM face_analyses WHERE user_id = ? AND ratings IS NOT NULL ORDER BY created_at DESC LIMIT 1").get(user.id) as { created_at: string; ratings: string } | undefined;
+      const fr = r ? json<{ overall: { score: number }; pillars: { pillar: string; score: number }[]; leans_toward: string; modifiable: { area: string }[] } | null>(r.ratings, null) : null;
+      return fr ? `Latest facial rating (${r!.created_at.slice(0, 10)}, user opted in): ${fr.overall.score}/10; pillars ${fr.pillars.map((x) => `${x.pillar} ${x.score}`).join(", ")}; leans toward ${fr.leans_toward}; modifiable areas: ${fr.modifiable.map((m) => m.area).join(", ")}. You may discuss it and how to improve modifiable areas, but don't produce new ratings.` : "";
+    })(),
     mem.length ? `Things the user asked you to remember:\n${mem.map((m) => `- ${m.content}`).join("\n")}` : "",
   ]
     .filter(Boolean)

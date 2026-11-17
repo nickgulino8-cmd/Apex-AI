@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EXERCISES, EXERCISE_BY_ID, MUSCLE_GROUPS, available } from "../src/lib/data/exercises";
-import { COMPOUNDS, OTC_SUGGESTABLE, DERM_DISCUSS, references } from "../src/lib/data/compounds";
+import { COMPOUNDS, OTC_SUGGESTABLE, DERM_DISCUSS, RX_EXCLUDED, references } from "../src/lib/data/compounds";
 import { generateProgram, type ProgramConfig } from "../src/lib/engine/program";
 import { analyze, e1rm, suggestToday } from "../src/lib/engine/analytics";
 import { buildRoutine } from "../src/lib/engine/routine";
@@ -29,8 +29,11 @@ test("compound database integrity & safety flags", () => {
     const c = COMPOUNDS.find((x) => x.id === id)!;
     assert.ok(c.highRisk, `${id} must be high-risk`);
     assert.ok(!OTC_SUGGESTABLE.includes(id), `${id} must never be an OTC suggestion`);
-    // Isotretinoin is a legitimate "ask your dermatologist" topic for severe acne; hormones/anabolics never are.
-    if (id !== "isotretinoin") assert.ok(!DERM_DISCUSS.includes(id), `${id} must never be a dermatologist topic`);
+  }
+  // Prescription dermatology options may be recommended; hormonal/anabolic agents never are.
+  for (const id of ["tretinoin", "isotretinoin", "spironolactone", "clindamycin-topical", "hydroquinone", "finasteride", "minoxidil"]) assert.ok(DERM_DISCUSS.includes(id), `${id} should be a prescription option`);
+  for (const id of ["anabolic-steroids", "sarms", "aromatase-inhibitors", "serms", "testosterone-therapy", "systemic-corticosteroids"]) {
+    assert.ok(RX_EXCLUDED.includes(id) && !DERM_DISCUSS.includes(id), `${id} must never be recommended`);
   }
   for (const id of OTC_SUGGESTABLE) assert.notEqual(COMPOUNDS.find((c) => c.id === id)!.access, "rx");
   // No dosing language anywhere in the database.
@@ -118,4 +121,27 @@ test("face metrics: symmetric synthetic face has ~0 asymmetry", () => {
   assert.ok(m.asymmetryPct < 0.5, `asymmetry ${m.asymmetryPct}`);
   assert.ok(Math.abs(m.upperThird + m.middleThird + m.lowerThird - 1) < 1e-9);
   assert.ok(Math.abs(m.rollDeg) < 1e-6 || true);
+});
+
+test("face metrics: canthal tilt sign and roll invariance", () => {
+  const base = (rot: number): Pt[] => {
+    const P: Pt[] = Array.from({ length: 478 }, () => ({ x: 500, y: 400 }));
+    const set = (i: number, x: number, y: number) => {
+      const c = Math.cos(rot), s = Math.sin(rot);
+      P[i] = { x: 500 + (x - 500) * c - (y - 400) * s, y: 400 + (x - 500) * s + (y - 400) * c };
+    };
+    // Outer corners 10px higher than inner corners → positive tilt.
+    set(33, 380, 290); set(133, 450, 300); set(362, 550, 300); set(263, 620, 290);
+    set(10, 500, 150); set(9, 500, 280); set(2, 500, 450); set(0, 500, 480); set(17, 500, 520); set(152, 500, 620);
+    set(234, 330, 330); set(454, 670, 330); set(172, 360, 520); set(397, 640, 520);
+    set(61, 450, 500); set(291, 550, 500); set(129, 470, 440); set(358, 530, 440); set(1, 500, 420);
+    set(468, 415, 300); set(473, 585, 300);
+    return P;
+  };
+  const a = computeMetrics(base(0));
+  assert.ok(a.canthalTiltDeg > 7 && a.canthalTiltDeg < 9, `tilt ${a.canthalTiltDeg}`);
+  const b = computeMetrics(base(0.15));
+  assert.ok(Math.abs(a.canthalTiltDeg - b.canthalTiltDeg) < 0.01, "tilt should not change with head roll");
+  assert.ok(a.fwhr > 1.5 && a.fwhr < 2.1, `fwhr ${a.fwhr}`);
+  assert.ok(a.midfaceRatio > 0.8 && a.midfaceRatio < 1.1, `midface ${a.midfaceRatio}`);
 });

@@ -1115,12 +1115,17 @@ export const OTC_SUGGESTABLE = COMPOUNDS.filter(
   (c) => (c.access === "otc" || c.access === "otc-and-rx") && !c.highRisk && c.category !== "Supplements" && c.category !== "Corticosteroids",
 ).map((c) => c.id);
 
-/** Prescription topical/oral dermatology options a user may *ask a dermatologist about* (education only). */
+/**
+ * Prescription dermatology treatments APEX may present as options to take to a dermatologist,
+ * matched to what a photo shows. Hormonal manipulation, anabolic agents, aromatase inhibitors,
+ * SERMs, testosterone and systemic steroids are deliberately excluded.
+ */
+export const RX_EXCLUDED = ["testosterone-therapy", "systemic-corticosteroids", "anabolic-steroids", "sarms", "aromatase-inhibitors", "serms"];
 export const DERM_DISCUSS = COMPOUNDS.filter(
   (c) =>
-    c.access === "rx" &&
-    ["Retinoids", "Acne treatments", "Rosacea & redness", "Pigment treatments", "Other prescription dermatology", "Hormonal medications"].includes(c.category) &&
-    !["finasteride", "testosterone-therapy", "systemic-corticosteroids"].includes(c.id),
+    (c.access === "rx" || c.access === "otc-and-rx") &&
+    ["Retinoids", "Acne treatments", "Rosacea & redness", "Pigment treatments", "Other prescription dermatology", "Hormonal medications", "Corticosteroids"].includes(c.category) &&
+    !RX_EXCLUDED.includes(c.id),
 ).map((c) => c.id);
 
 export const CONCERN_LABEL: Record<Concern, string> = {

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { Stethoscope, Sparkles, Info, ShieldAlert, Leaf } from "lucide-react";
 import { Badge } from "@/components/ui";
+import { RatingCard } from "@/components/RatingCard";
 import type { FaceReportT } from "./types";
 
 export type CompoundLite = Record<string, { name: string; access: string; rx: boolean }>;
@@ -21,6 +22,7 @@ export const ZONE_LABEL: Record<string, string> = {
 export function FaceReportView({ report, compounds, onFocus }: { report: FaceReportT; compounds: CompoundLite; onFocus: (zone: string | null) => void }) {
   return (
     <div className="space-y-6">
+      <RatingCard rating={report.ratings} error={report.rating_error} title="Facial rating · four pillars" />
       <p className="text-[15px] leading-relaxed text-fg/90">{report.summary}</p>
       {report.image_quality.issues.length > 0 && (
         <div className="flex gap-2 rounded-xl border border-line/60 bg-raised/30 p-3 text-xs text-muted"><Info size={14} className="mt-0.5 shrink-0" />{report.image_quality.issues.join(" ")}</div>
@@ -86,23 +88,35 @@ export function FaceReportView({ report, compounds, onFocus }: { report: FaceRep
         </div>
       )}
 
-      {(report.dermatologist_topics.length > 0 || report.professional.length > 0) && (
+      {(report.prescription_options ?? []).length > 0 && (
+        <div className="rounded-2xl border border-line/70 bg-surface p-4">
+          <div className="mb-1 flex items-center gap-2 text-sm font-medium"><Stethoscope size={16} className="text-accent" /> Prescription options</div>
+          <p className="mb-3 text-xs text-muted">Treatments dermatologists commonly prescribe for what&apos;s visible. These need a prescription: bring this list to a dermatologist, who&apos;ll decide what fits you and how to use it safely.</p>
+          <div className="space-y-2">
+            {report.prescription_options.map((o) => (
+              <div key={o.compound_id + o.for_concern} className="rounded-xl border border-line/60 bg-raised/30 p-3.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  {compounds[o.compound_id] ? <Link href={`/skincare/${o.compound_id}`} className="text-sm font-medium hover:text-accent">{compounds[o.compound_id].name}</Link> : <span className="text-sm font-medium">{o.compound_id}</span>}
+                  <Badge tone="warn">Rx</Badge>
+                  <Badge>{o.for_concern}</Badge>
+                </div>
+                <p className="mt-1.5 text-[13px] text-fg/90">{o.why}</p>
+                <p className="mt-1 text-[12px] text-muted"><span className="text-dim">What to expect:</span> {o.expect}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {report.professional.length > 0 && (
         <div className="rounded-xl border border-warn/30 bg-warn/5 p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm font-medium"><Stethoscope size={16} className="text-warn" /> When to see a dermatologist</div>
+          <div className="mb-2 flex items-center gap-2 text-sm font-medium"><Stethoscope size={16} className="text-warn" /> See a dermatologist</div>
           {report.professional.map((p, i) => (
             <p key={i} className="mb-1.5 flex gap-2 text-[13px] text-fg/90">
               {p.urgency === "prompt" && <ShieldAlert size={14} className="mt-0.5 shrink-0 text-bad" />}
               {p.reason}
             </p>
           ))}
-          {report.dermatologist_topics.length > 0 && (
-            <>
-              <p className="mt-3 text-xs text-muted">Prescription treatments you could ask a dermatologist about (education only; they&apos;ll decide what fits you):</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {report.dermatologist_topics.map((c) => compounds[c] && <Link key={c} href={`/skincare/${c}`} className="chip hover:text-fg">{compounds[c].name}</Link>)}
-              </div>
-            </>
-          )}
         </div>
       )}
     </div>

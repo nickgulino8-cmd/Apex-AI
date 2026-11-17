@@ -25,6 +25,8 @@ export type Profile = {
   save_photos: boolean;
   photo_consent_at: string | null;
   onboarded: boolean;
+  show_ratings: boolean;
+  rating_reference: "male" | "female" | null;
 };
 
 export type User = {
@@ -83,6 +85,8 @@ export function loadProfile(userId: string): Profile {
     save_photos: !!r.save_photos,
     photo_consent_at: (r.photo_consent_at as string) ?? null,
     onboarded: !!r.onboarded,
+    show_ratings: !!r.show_ratings,
+    rating_reference: (r.rating_reference as Profile["rating_reference"]) ?? null,
   };
 }
 

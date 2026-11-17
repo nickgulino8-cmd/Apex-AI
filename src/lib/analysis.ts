@@ -36,7 +36,14 @@ export const FaceReport = z.object({
   ),
   habits: z.array(z.string()),
   professional: z.array(Pro),
-  dermatologist_topics: z.array(z.enum(DERM_DISCUSS as [string, ...string[]])),
+  prescription_options: z.array(
+    z.object({
+      compound_id: z.enum(DERM_DISCUSS as [string, ...string[]]),
+      for_concern: z.string(),
+      why: z.string(),
+      expect: z.string(),
+    }),
+  ),
 });
 export type FaceReport = z.infer<typeof FaceReport>;
 
@@ -69,7 +76,7 @@ Face-specific rules:
 - Use the provided landmark measurements for proportions/symmetry and say they are approximate and affected by camera angle, lens distance and expression.
 - Skin observations: describe visible features only (e.g. "several small red raised spots on the image-left cheek"). Don't name diseases. Lighting, filters and makeup affect what is visible — say so when relevant.
 - recommendations.compound_ids may only use the allowed OTC ids. Explain the reasoning in plain language. Always include a gentle cleanser/moisturiser/sunscreen "foundation" item.
-- dermatologist_topics: prescription options the person could ASK a dermatologist about, only when a visible concern plausibly warrants professional care (e.g. widespread inflammatory or nodular acne, persistent redness). Leave empty otherwise. These are for education only.
+- prescription_options: for each visible concern where prescription treatment is commonly used, list the prescription dermatology options that fit it (allowed ids only), with why it suits what's visible and what to expect (timeline, common side effects, monitoring such as iPLEDGE for isotretinoin). Order by how commonly dermatologists start with them. Include options for mild concerns too when they are standard (e.g. tretinoin for acne or photoaging). No doses. These are options to bring to a dermatologist, who decides; respect pregnancy flags (exclude retinoids, spironolactone, hydroquinone, finasteride when pregnant/trying).
 - professional: include an item when anything could warrant a clinician (moles that look irregular, non-healing sores, severe acne, signs of infection). Use urgency "prompt" for changing/irregular moles or sores.
 - Zones use IMAGE left/right (the viewer's left/right), not the person's.
 - If the image doesn't show a single face clearly, set usable=false, explain in issues, and keep other arrays empty.`;

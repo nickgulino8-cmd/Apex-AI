@@ -17,6 +17,9 @@ export type Metrics = {
   chinToLowerThird: number;
   yawDeg: number;
   rollDeg: number;
+  canthalTiltDeg: number;
+  fwhr: number;
+  midfaceRatio: number;
 };
 
 export const IDX = {
@@ -38,6 +41,9 @@ export const IDX = {
   mouthR: 291,
   noseL: 129,
   noseR: 358,
+  upperLip: 0,
+  irisL: 468,
+  irisR: 473,
 };
 
 const MIDLINE = [10, 151, 9, 8, 168, 6, 197, 195, 5, 4, 2, 164, 0, 17, 18, 200, 199, 175, 152];
@@ -98,7 +104,18 @@ export function computeMetrics(P: Pt[]): Metrics {
   const eyeW = (dist(g("eyeOuterL"), g("eyeInnerL")) + dist(g("eyeInnerR"), g("eyeOuterR"))) / 2;
   const mid = mean([g("cheekL"), g("cheekR")]);
   const yawOffset = Math.max(-1, Math.min(1, ((g("noseTip").x - mid.x) / (faceW / 2)) * 1.6));
+  // Canthal tilt: inner→outer corner angle, positive when the outer corner sits higher.
+  // Averaging both eyes cancels head roll (it raises one side's angle and lowers the other's equally).
+  const tilt = (inner: Pt, outer: Pt) => Math.atan2(inner.y - outer.y, Math.abs(outer.x - inner.x));
+  const tiltAvg = (tilt(g("eyeInnerL"), g("eyeOuterL")) + tilt(g("eyeInnerR"), g("eyeOuterR"))) / 2;
+  const browToLip = Math.abs(g("upperLip").y - g("glabella").y) || 1;
+  const pupils = P[IDX.irisL] && P[IDX.irisR] ? dist(g("irisL"), g("irisR")) : dist(g("eyeInnerL"), g("eyeInnerR")) + eyeW;
+  const eyeLineY = (g("eyeInnerL").y + g("eyeInnerR").y + g("eyeOuterL").y + g("eyeOuterR").y) / 4;
+  const midfaceH = Math.abs(g("upperLip").y - eyeLineY) || 1;
   return {
+    canthalTiltDeg: (tiltAvg * 180) / Math.PI,
+    fwhr: faceW / browToLip,
+    midfaceRatio: pupils / midfaceH,
     upperThird: upper / total,
     middleThird: middle / total,
     lowerThird: lower / total,
@@ -124,7 +141,7 @@ export function zoneShapes(P: Pt[]) {
   ) as Record<string, { cx: number; cy: number; rx: number; ry: number; rot: number; label: string }>;
 }
 
-/** Neutral, plain-language descriptions of the measurements (no ideals, no rankings). */
+/** Plain-language descriptions of the measurements. */
 export function describe(m: Metrics): { label: string; value: string; note: string }[] {
   const pct = (x: number) => `${Math.round(x * 100)}%`;
   return [
@@ -135,6 +152,11 @@ export function describe(m: Metrics): { label: string; value: string; note: stri
     { label: "Eye spacing", value: m.eyeSpacingRatio.toFixed(2), note: "Distance between inner eye corners relative to average eye width." },
     { label: "Mouth-to-nose width", value: m.mouthToNoseRatio.toFixed(2), note: "Mouth corner width relative to nose width." },
     { label: "Chin share of lower third", value: pct(m.chinToLowerThird), note: "Lower lip to chin, as a share of nose-base-to-chin." },
+    ...(m.fwhr != null ? [
+      { label: "Canthal tilt", value: `${m.canthalTiltDeg >= 0 ? "+" : ""}${m.canthalTiltDeg.toFixed(1)}°`, note: "Angle from inner to outer eye corner, averaged over both eyes. Positive means the outer corner sits higher." },
+      { label: "FWHR", value: m.fwhr.toFixed(2), note: "Facial width-to-height ratio: cheekbone width ÷ brow-to-upper-lip height." },
+      { label: "Midface ratio", value: m.midfaceRatio.toFixed(2), note: "Distance between pupils ÷ eye-line-to-upper-lip height." },
+    ] : []),
   ];
 }
 

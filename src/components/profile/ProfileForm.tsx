@@ -23,7 +23,7 @@ export function ProfileForm({ name, email, age, isMinor, profile, memories, aiRe
       await api("/api/profile", {
         method: "PATCH",
         body: { name: p.name, experience: p.experience, equipment: p.equipment, days_per_week: p.days_per_week, session_minutes: p.session_minutes, goals: p.goals, preferences: { ...p.preferences, injuries: p.preferences.injuries || undefined },
-          faith_content: p.faith_content, units: p.units, ai_memory: p.ai_memory, save_photos: p.save_photos },
+          faith_content: p.faith_content, units: p.units, ai_memory: p.ai_memory, save_photos: p.save_photos, show_ratings: p.show_ratings, rating_reference: p.rating_reference },
       });
       setState("saved");
       router.refresh();
@@ -70,6 +70,18 @@ export function ProfileForm({ name, email, age, isMinor, profile, memories, aiRe
               <button onClick={() => setThemeMode("dark")} className={`chip ${theme === "dark" ? "chip-on" : ""}`}><Moon size={13} /> Dark</button>
               <button onClick={() => setThemeMode("light")} className={`chip ${theme === "light" ? "chip-on" : ""}`}><Sun size={13} /> Light</button>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="card card-pad">
+        <h2 className="h2 mb-2">Ratings</h2>
+        <div className="divide-y divide-line/60">
+          <Toggle checked={p.show_ratings && !isMinor} disabled={isMinor} onChange={(show_ratings) => u({ show_ratings })} label="Facial & physique ratings"
+            hint={isMinor ? "Available from age 18." : "A 1–10 rating with four pillars (harmony, angularity, dimorphism, features / proportions, development, symmetry, definition), shown with each analysis."} />
+          <div className="flex items-center justify-between gap-4 py-3">
+            <span><span className="block text-sm">Dimorphism reference</span><span className="text-xs text-muted">Which sex characteristics the dimorphism pillar is scored against. It&apos;s never guessed from your photo.</span></span>
+            <Chips options={[{ v: "male", l: "Male" }, { v: "female", l: "Female" }] as const} value={p.rating_reference ? [p.rating_reference] : []} onChange={([v]) => u({ rating_reference: v ?? null })} />
           </div>
         </div>
       </section>

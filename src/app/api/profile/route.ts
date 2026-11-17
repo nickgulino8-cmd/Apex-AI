@@ -28,6 +28,8 @@ const Schema = z
     ai_memory: z.boolean(),
     save_photos: z.boolean(),
     onboarded: z.boolean(),
+    show_ratings: z.boolean(),
+    rating_reference: z.enum(["male", "female"]).nullable(),
   })
   .partial();
 

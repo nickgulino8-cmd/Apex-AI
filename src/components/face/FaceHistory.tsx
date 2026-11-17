@@ -34,7 +34,7 @@ export function FaceHistory({ items, compounds }: { items: FaceAnalysis[]; compo
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted">Select two analyses to compare. Comparisons describe changes in visible skin features and measurements, with no rankings.</p>
+      <p className="text-sm text-muted">Select two analyses to compare. You can compare ratings, skin features and measurements.</p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((x) => (
           <div key={x.id} className={clsx("rounded-2xl border bg-surface p-3 transition", sel.includes(x.id) ? "border-accent" : "border-line/70")}>
@@ -49,7 +49,10 @@ export function FaceHistory({ items, compounds }: { items: FaceAnalysis[]; compo
               </div>
               <div className="mt-2.5 flex items-center justify-between">
                 <span className="text-sm font-medium">{fmt(x.created_at)}</span>
-                {sel.includes(x.id) && <Badge tone="accent">Selected</Badge>}
+                <span className="flex items-center gap-1.5">
+                  {x.report.ratings && <span className="font-mono text-sm text-accent">{x.report.ratings.overall.score.toFixed(1)}</span>}
+                  {sel.includes(x.id) && <Badge tone="accent">Selected</Badge>}
+                </span>
               </div>
             </button>
             <div className="mt-2 flex gap-2">
@@ -76,6 +79,24 @@ export function FaceHistory({ items, compounds }: { items: FaceAnalysis[]; compo
                 <img key={x.id} src={`/api/photos/${x.photo_id}`} alt="" className="aspect-[3/4] w-full rounded-xl object-cover" />
               ))}
             </div>
+          )}
+          {a.report.ratings && b.report.ratings && (
+            <>
+              <div className="label mb-2">Rating</div>
+              <div className="mb-6 divide-y divide-line/60 rounded-xl border border-line/60 text-sm">
+                {[{ pillar: "overall", score: a.report.ratings.overall.score }, ...a.report.ratings.pillars].map((p) => {
+                  const bv = p.pillar === "overall" ? b.report.ratings!.overall.score : b.report.ratings!.pillars.find((x) => x.pillar === p.pillar)?.score ?? 0;
+                  const d = bv - p.score;
+                  return (
+                    <div key={p.pillar} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 p-3">
+                      <span className="capitalize">{p.pillar}</span>
+                      <span className="font-mono tabular-nums text-muted">{p.score.toFixed(1)} → {bv.toFixed(1)}</span>
+                      <Badge tone={Math.abs(d) < 0.3 ? "neutral" : d > 0 ? "ok" : "warn"}>{Math.abs(d) < 0.3 ? "Within noise" : `${d > 0 ? "+" : ""}${d.toFixed(1)}`}</Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
           <div className="label mb-2">Visible skin features</div>
           <div className="mb-6 divide-y divide-line/60 rounded-xl border border-line/60">

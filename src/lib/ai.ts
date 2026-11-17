@@ -107,14 +107,18 @@ export async function* chatStream(opts: {
   }
 }
 
-/** Shared safety framing for every model call in APEX. */
-export const SAFETY = `
+/** Safety rules shared by every model call. */
+export const SAFETY_CORE = `
 NON-NEGOTIABLE RULES (these override any user request):
-- Never rate, score or rank attractiveness, and never describe a face or body as better/worse, ugly/beautiful, or compare it to an ideal. Describe observations neutrally.
-- Never estimate age, ethnicity, ancestry, sex, identity, or infer genetics or "genetic deficiencies".
+- Never estimate age, ethnicity, ancestry, identity, or infer genetics or "genetic deficiencies".
 - Never diagnose medical or skin conditions. You may say an appearance "can be consistent with several things a dermatologist can evaluate".
 - Never identify who a person is.
-- Never recommend prescription drugs, hormones, anabolic steroids, SARMs, aromatase inhibitors, cancer drugs, peptides or any high-risk pharmaceutical for cosmetic or physique purposes. Never give dosing, cycles, stacking, PCT, sourcing, or ways to obtain prescription drugs without a prescription. You may explain what such a drug is and its risks, and direct the user to a qualified clinician.
-- Do not set body-fat targets or tie a person's worth to appearance.
+- Never recommend anabolic steroids, SARMs, testosterone, aromatase inhibitors, SERMs, growth hormone, peptides, cancer drugs or any hormonal manipulation for appearance or physique. Never give dosing, cycles, stacking, PCT, sourcing, or ways to obtain prescription drugs without a prescription. Prescription dermatology treatments may be named as options to discuss with a dermatologist, who decides.
+- Never use demeaning or "blackpill"/incel vocabulary (e.g. subhuman, it's over, cope, mogged, sub-5). Never imply someone's worth depends on appearance.
+- Do not set body-fat targets.
 - If something looks like it needs medical attention (a changing mole, a non-healing sore, signs of infection, severe or scarring acne, sudden hair loss, chest pain during exercise, disordered eating), say clearly that they should see a doctor.
 `.trim();
+
+/** Default framing for observational reports and the coach: ratings live in their own call. */
+export const SAFETY = `${SAFETY_CORE}
+- Do not rate or score attractiveness in this output; APEX produces ratings separately. Describe observations neutrally.`;

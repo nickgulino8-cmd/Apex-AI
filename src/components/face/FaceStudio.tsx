@@ -14,7 +14,7 @@ import type { FaceReportT } from "./types";
 
 type Detect = { status: "idle" | "loading" | "ok" | "none" | "multi" | "error"; P: Pt[] | null; metrics: Metrics | null; w: number; h: number };
 
-export function FaceStudio({ aiReady, consented, defaultSave, compounds }: { aiReady: boolean; consented: boolean; defaultSave: boolean; compounds: CompoundLite }) {
+export function FaceStudio({ aiReady, consented, defaultSave, compounds, showRatings, ratingRef }: { aiReady: boolean; consented: boolean; defaultSave: boolean; compounds: CompoundLite; showRatings: boolean; ratingRef: "male" | "female" | null }) {
   const router = useRouter();
   const [photo, setPhoto] = useState<string | null>(null);
   const [det, setDet] = useState<Detect>({ status: "idle", P: null, metrics: null, w: 0, h: 0 });
@@ -25,6 +25,7 @@ export function FaceStudio({ aiReady, consented, defaultSave, compounds }: { aiR
   const [save, setSave] = useState(defaultSave);
   const [consent, setConsent] = useState(consented);
   const [focus, setFocus] = useState<string | null>(null);
+  const [ref, setRef] = useState(ratingRef);
 
   useEffect(() => {
     if (!photo) return;
@@ -127,14 +128,14 @@ export function FaceStudio({ aiReady, consented, defaultSave, compounds }: { aiR
                 </div>
               ))}
             </div>
-            <p className="mt-2 text-[11px] text-dim">These are descriptive measurements, not scores. There&apos;s no &quot;ideal&quot; value. Camera distance, lens and expression all shift them.</p>
+            <p className="mt-2 text-[11px] text-dim">Camera distance, lens and expression all shift these numbers. Face the camera straight on, at arm&apos;s length or further, for comparable results.</p>
           </div>
         )}
 
         {!report && det.status !== "multi" && det.status !== "loading" && (
           <div className="rounded-2xl border border-line/70 bg-surface p-5">
             <div className="flex items-center gap-2 font-medium"><Sparkles size={16} className="text-accent" /> AI skin analysis</div>
-            <p className="mt-1 text-sm text-muted">Texture, blemishes, redness, pigmentation, under-eye and oil/hydration. You&apos;ll get neutral observations, annotated zones and an OTC routine.</p>
+            <p className="mt-1 text-sm text-muted">Skin observations with annotated zones, OTC and prescription options{showRatings ? ", plus a four-pillar facial rating (harmony, angularity, dimorphism, features)" : ""}.</p>
             {!aiReady ? (
               <Notice tone="warn"><span className="flex gap-2"><AlertTriangle size={16} className="shrink-0" /> AI analysis isn&apos;t configured on this server (missing ANTHROPIC_API_KEY). On-device measurements above still work.</span></Notice>
             ) : (
@@ -144,6 +145,15 @@ export function FaceStudio({ aiReady, consented, defaultSave, compounds }: { aiR
                     <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 accent-[rgb(var(--accent))]" />
                     <span>I agree to send this photo to APEX&apos;s AI provider for a one-time skin analysis. It&apos;s not used for identification or to train models through APEX, and I can delete anything saved.</span>
                   </label>
+                )}
+                {showRatings && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="text-muted">Dimorphism reference:</span>
+                    {(["male", "female"] as const).map((r) => (
+                      <button key={r} type="button" onClick={async () => { setRef(r); await api("/api/profile", { method: "PATCH", body: { rating_reference: r } }).catch(() => {}); }} className={clsx("chip capitalize", ref === r && "chip-on")}>{r}</button>
+                    ))}
+                    {!ref && <span className="text-[11px] text-warn">Pick one to score the dimorphism pillar</span>}
+                  </div>
                 )}
                 <label className="flex items-center gap-2.5 text-sm">
                   <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} className="accent-[rgb(var(--accent))]" />
@@ -157,7 +167,7 @@ export function FaceStudio({ aiReady, consented, defaultSave, compounds }: { aiR
         {busy && <div className="space-y-2">{[0, 1, 2].map((i) => <div key={i} className="skeleton h-16" />)}</div>}
         {err && <Notice tone="bad">{err}</Notice>}
         {report && report.image_quality.usable && <FaceReportView report={report} compounds={compounds} onFocus={setFocus} />}
-        <p className="text-[11px] leading-relaxed text-dim">APEX describes what&apos;s visible and never rates attractiveness, guesses age or ethnicity, or diagnoses conditions. These observations are not a medical assessment.</p>
+        <p className="text-[11px] leading-relaxed text-dim">APEX never guesses age or ethnicity, never lets them affect a rating, and doesn&apos;t diagnose conditions. These observations are not a medical assessment.</p>
       </div>
     </div>
   );

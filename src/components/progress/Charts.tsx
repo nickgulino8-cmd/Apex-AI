@@ -112,3 +112,28 @@ export function Heatmap({ days, kind }: { days: { date: string; value: number; m
     </div>
   );
 }
+
+export function RatingTrend({ points }: { points: { date: string; score: number; low: number; high: number }[] }) {
+  if (points.length < 2) return <Empty title={points.length ? `Latest: ${points[0].score.toFixed(1)}` : "No ratings yet"} body="Run at least two facial analyses to see a trend. Differences under about 0.5 are usually photo noise." />;
+  return (
+    <div className="h-52">
+      <ResponsiveContainer>
+        <LineChart data={points} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+          {GRID}
+          <XAxis dataKey="date" tickFormatter={fmtWeek} {...AX} interval="preserveStartEnd" />
+          <YAxis domain={[1, 10]} ticks={[1, 4, 5.5, 7, 10]} {...AX} />
+          <ReferenceLine y={5.5} stroke="rgb(var(--silver))" strokeDasharray="4 4" label={{ value: "avg", fill: "rgb(var(--muted))", fontSize: 10, position: "insideBottomRight" }} />
+          <Tooltip cursor={{ stroke: "rgb(var(--dim))", strokeDasharray: "3 3" }} content={({ active, payload, label }) =>
+            active && payload?.length ? (
+              <div className="rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-xl">
+                <div className="text-muted">{fmtWeek(label as string)}</div>
+                <div className="mt-0.5 font-mono text-sm">{(payload[0].value as number).toFixed(1)} / 10</div>
+                <div className="text-muted">range {(payload[0].payload as { low: number }).low.toFixed(1)}–{(payload[0].payload as { high: number }).high.toFixed(1)}</div>
+              </div>
+            ) : null} />
+          <Line type="monotone" dataKey="score" stroke="rgb(var(--accent))" strokeWidth={2} dot={{ r: 4, fill: "rgb(var(--accent))", stroke: "rgb(var(--surface))", strokeWidth: 2 }} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}

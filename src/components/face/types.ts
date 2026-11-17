@@ -8,7 +8,9 @@ export type FaceReportT = {
   recommendations: { concern: string; compound_ids: string[]; rationale: string; priority: "foundation" | "targeted" | "optional" }[];
   habits: string[];
   professional: { reason: string; urgency: "routine" | "soon" | "prompt" }[];
-  dermatologist_topics: string[];
+  prescription_options: { compound_id: string; for_concern: string; why: string; expect: string }[];
+  ratings?: RatingT | null;
+  rating_error?: string | null;
 };
 export type BodyReportT = {
   image_quality: { usable: boolean; issues: string[] };
@@ -18,4 +20,18 @@ export type BodyReportT = {
   structure_notes: string[];
   priorities: { group: string; why: string; exercise_ids: string[] }[];
   professional: { reason: string; urgency: string }[];
+  ratings?: RatingT | null;
+  rating_error?: string | null;
+};
+export type PillarT = { pillar: string; score: number; evidence: string; note: string };
+export type RatingT = {
+  ratable: boolean;
+  reason_if_not: string;
+  overall: { score: number; low: number; high: number };
+  pillars: PillarT[];
+  leans_toward: string;
+  leans_summary: string;
+  strengths: string[];
+  modifiable: { area: string; suggestion: string; impact: "small" | "moderate" | "large" }[];
+  caveats: string[];
 };

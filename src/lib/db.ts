@@ -188,6 +188,12 @@ const MIGRATIONS: string[] = [
   /* 2 — separate threads for the general assistant and the appearance/skincare coach */ `
   ALTER TABLE chat_messages ADD COLUMN mode TEXT NOT NULL DEFAULT 'assistant';
   `,
+  /* 3 — attractiveness/physique ratings (adults, toggleable) */ `
+  ALTER TABLE profiles ADD COLUMN show_ratings INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE profiles ADD COLUMN rating_reference TEXT;
+  ALTER TABLE face_analyses ADD COLUMN ratings TEXT;
+  ALTER TABLE body_analyses ADD COLUMN ratings TEXT;
+  `,
 ];
 
 function open() {

@@ -1,13 +1,13 @@
 import { CheckCircle2, AlertTriangle, Info } from "lucide-react";
 import { requireUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { db, json } from "@/lib/db";
 import { today, addDays } from "@/lib/util";
 import { activeProgram, goalsFor, habitHistory, skincareHistory, workoutData } from "@/lib/repo";
 import { analyze } from "@/lib/engine/analytics";
 import { GROUP_LABEL, MUSCLE_GROUPS } from "@/lib/data/exercises";
 import { PageHeader, Card, SectionHead, Stat, Ring } from "@/components/ui";
 import { Anatomy } from "@/components/Anatomy";
-import { SessionsChart, StrengthChart, SleepChart, Heatmap } from "@/components/progress/Charts";
+import { SessionsChart, StrengthChart, SleepChart, Heatmap, RatingTrend } from "@/components/progress/Charts";
 import { Goals } from "@/components/progress/Goals";
 import { Gallery } from "@/components/progress/Gallery";
 
@@ -24,6 +24,11 @@ export default async function ProgressPage() {
   const skin = skincareHistory(user.id, 84, d);
   const goals = goalsFor(user.id);
   const photos = db.prepare("SELECT id, kind, created_at FROM photos WHERE user_id = ? ORDER BY created_at DESC").all(user.id) as { id: string; kind: string; created_at: string }[];
+  const showRatings = user.profile.show_ratings && !user.isMinor;
+  const ratingPoints = showRatings
+    ? (db.prepare("SELECT created_at, ratings FROM face_analyses WHERE user_id = ? AND ratings IS NOT NULL ORDER BY created_at").all(user.id) as { created_at: string; ratings: string }[])
+        .map((r) => ({ date: r.created_at.slice(0, 10), ...json<{ overall: { score: number; low: number; high: number } }>(r.ratings, { overall: { score: 0, low: 0, high: 0 } }).overall }))
+    : [];
   const trained = new Set(a.trainedDays);
   const trainDays = Array.from({ length: 84 }, (_, i) => { const x = addDays(d, i - 83); return { date: x, value: trained.has(x) ? 1 : 0, max: 1 }; });
   const sleep = Array.from({ length: 30 }, (_, i) => { const x = addDays(d, i - 29); return { date: x, hours: recovery.find((r) => r.date === x)?.sleep_hours ?? null }; });
@@ -35,7 +40,7 @@ export default async function ProgressPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Progress" title="Your trajectory" sub="Consistency, strength, recovery and habits. Measured by what you do, never by how you look." />
+      <PageHeader eyebrow="Progress" title="Your trajectory" sub="Consistency, strength, recovery, habits and appearance, tracked over time." />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Workouts (12 mo)" value={a.totalWorkouts} />
         <Stat label="Streak" value={a.streakWeeks} unit="weeks" />
@@ -78,6 +83,8 @@ export default async function ProgressPage() {
         </Card>
         <Card><SectionHead label="Recovery" title="Sleep — last 30 days" sub={a.avgSleep != null ? `7-day average: ${a.avgSleep.toFixed(1)} h` : undefined} /><SleepChart data={sleep} /></Card>
       </div>
+
+      {showRatings && <Card><SectionHead label="Face" title="Facial rating over time" sub="Overall score per analysis. Use consistent lighting and angle for meaningful comparisons." /><RatingTrend points={ratingPoints} /></Card>}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card><SectionHead label="Training days" title="Last 12 weeks" /><Heatmap days={trainDays} kind="training" /></Card>

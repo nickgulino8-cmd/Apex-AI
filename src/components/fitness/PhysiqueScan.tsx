@@ -9,6 +9,7 @@ import { poseLandmarker, loadImage } from "@/lib/vision";
 import { PhotoInput } from "@/components/PhotoInput";
 import { Anatomy } from "@/components/Anatomy";
 import { Badge, Notice, Spinner } from "@/components/ui";
+import { RatingCard } from "@/components/RatingCard";
 import { GROUP_LABEL, type MuscleGroup } from "@/lib/data/exercises";
 import type { BodyReportT } from "@/components/face/types";
 
@@ -19,7 +20,7 @@ const POSE_LINKS: [number, number][] = [[11, 12], [11, 13], [13, 15], [12, 14], 
 type Shot = { view: "front" | "back"; src: string; pose: { x: number; y: number }[] | null; w: number; h: number };
 export type PastScan = { id: string; created_at: string; report: BodyReportT };
 
-export function PhysiqueScan({ aiReady, consented, exerciseNames, past }: { aiReady: boolean; consented: boolean; exerciseNames: Record<string, string>; past: PastScan[] }) {
+export function PhysiqueScan({ aiReady, consented, exerciseNames, past, showRatings }: { aiReady: boolean; consented: boolean; exerciseNames: Record<string, string>; past: PastScan[]; showRatings: boolean }) {
   const router = useRouter();
   const [shots, setShots] = useState<Shot[]>([]);
   const [adding, setAdding] = useState<"front" | "back">("front");
@@ -98,7 +99,7 @@ export function PhysiqueScan({ aiReady, consented, exerciseNames, past }: { aiRe
           {!report && (
             <div className="card card-pad space-y-3">
               <div className="flex items-center gap-2 font-medium"><Sparkles size={16} className="text-accent" /> Muscle balance scan</div>
-              <p className="text-sm text-muted">The AI compares how developed each visible muscle group looks <em>relative to your own other groups</em>, notes posture, and recommends what to emphasise. No body-fat estimates, no scores, no comparisons with other people.</p>
+              <p className="text-sm text-muted">The AI compares how developed each visible muscle group looks <em>relative to your own other groups</em>, notes posture, and recommends what to emphasise{showRatings ? ". You also get a physique rating across four pillars: proportions, development, symmetry and definition" : ""}. No body-fat percentage estimates.</p>
               {!aiReady ? (
                 <Notice tone="warn">AI analysis isn&apos;t configured on this server (missing ANTHROPIC_API_KEY). The on-device pose overlay still works.</Notice>
               ) : (
@@ -133,6 +134,7 @@ export function PhysiqueScan({ aiReady, consented, exerciseNames, past }: { aiRe
         </div>
       </div>
 
+      {report && report.image_quality.usable && <RatingCard rating={report.ratings} error={report.rating_error} title="Physique rating · four pillars" />}
       {report && report.image_quality.usable && (
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="card card-pad">
@@ -186,7 +188,7 @@ export function PhysiqueScan({ aiReady, consented, exerciseNames, past }: { aiRe
             {past.map((p) => (
               <div key={p.id} className="card p-4">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-medium">{new Date(p.created_at.replace(" ", "T") + "Z").toLocaleDateString()}</span>
+                  <span className="text-sm font-medium">{new Date(p.created_at.replace(" ", "T") + "Z").toLocaleDateString()}{p.report.ratings && <span className="ml-2 font-mono text-accent">{p.report.ratings.overall.score.toFixed(1)}</span>}</span>
                   <button onClick={async () => { if (confirm("Delete this scan and any saved photo?")) { await api(`/api/analyses/body/${p.id}`, { method: "DELETE" }); router.refresh(); } }} className="text-dim hover:text-bad" aria-label="Delete scan"><Trash2 size={14} /></button>
                 </div>
                 <p className="line-clamp-3 text-xs text-muted">{p.report.summary}</p>

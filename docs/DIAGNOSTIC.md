@@ -457,7 +457,7 @@ Ranked by cost:
 | Visual annotations | ✅ | ✅ |
 | AI skin observations | 🔌 + 🔬 | ✅ (unvalidated, untested against the live API) |
 | Photo progress comparison | ✅ (needs capture standardisation) | ✅ |
-| Attractiveness scores | ⛔ | ❌ (paused) |
+| Attractiveness scores (4-pillar, range-based) | ⛔ reliability; shipped with guardrails | ✅ (built after this report, per product decision) |
 | Skincare/pharma education DB | ✅ + 🔬 expert review | ✅ (53 entries) |
 | OTC routine builder | ✅ | ✅ |
 | Rx options as clinician-handoff education | ✅ + 🔬 legal | Partial |
