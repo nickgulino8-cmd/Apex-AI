@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter Variable";
+  --font-mono: "JetBrains Mono Variable";
+  --bg: 7 8 10;
+  --surface: 16 17 20;
+  --raised: 24 26 30;
+  --line: 40 43 50;
+  --fg: 236 238 242;
+  --muted: 150 156 168;
+  --dim: 96 102 114;
+  --accent: 61 139 255;
+  --silver: 196 202 212;
+  --ok: 52 199 140;
+  --warn: 245 176 65;
+  --bad: 240 86 86;
+  color-scheme: dark;
+}
+
+/* Light theme is opt-in from Profile; dark is the default. */
+:root[data-theme="light"] {
+  --bg: 246 247 249;
+  --surface: 255 255 255;
+  --raised: 240 242 245;
+  --line: 222 225 231;
+  --fg: 16 18 22;
+  --muted: 92 98 110;
+  --dim: 140 146 158;
+  --accent: 27 104 230;
+  --silver: 90 98 112;
+  --ok: 16 150 98;
+  --warn: 196 120 10;
+  --bad: 210 50 50;
+  color-scheme: light;
+}
+
+html, body { background: rgb(var(--bg)); color: rgb(var(--fg)); }
+body {
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+::selection { background: rgb(var(--accent) / 0.35); }
+
+@layer components {
+  .card { @apply rounded-2xl border border-line/70 bg-surface; }
+  .card-pad { @apply p-5 sm:p-6; }
+  .label { @apply text-[11px] font-medium uppercase tracking-[0.14em] text-dim; }
+  .h1 { @apply text-2xl sm:text-3xl font-semibold tracking-tight; }
+  .h2 { @apply text-lg font-semibold tracking-tight; }
+  .input {
+    @apply w-full rounded-xl border border-line bg-raised/60 px-3.5 py-2.5 text-sm text-fg placeholder:text-dim
+      outline-none transition focus:border-accent/70 focus:ring-2 focus:ring-accent/20;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition
+      disabled:cursor-not-allowed disabled:opacity-50 active:scale-[.98];
+  }
+  .btn-primary { @apply btn bg-accent text-white hover:bg-accent/90 shadow-[0_0_0_1px_rgb(var(--accent)/.4),0_8px_24px_-8px_rgb(var(--accent)/.6)]; }
+  .btn-ghost { @apply btn border border-line bg-raised/40 text-fg hover:bg-raised; }
+  .btn-danger { @apply btn border border-bad/40 bg-bad/10 text-bad hover:bg-bad/20; }
+  .chip { @apply inline-flex items-center gap-1 rounded-full border border-line bg-raised/50 px-2.5 py-1 text-xs text-muted; }
+  .chip-on { @apply border-accent/60 bg-accent/15 text-fg; }
+  .skeleton { @apply rounded-lg bg-[linear-gradient(90deg,rgb(var(--raised))_0%,rgb(var(--line))_50%,rgb(var(--raised))_100%)] bg-[length:800px_100%] animate-shimmer; }
+  .prose-apex { @apply text-sm leading-relaxed text-fg/90; }
+  .prose-apex p { @apply my-2; }
+  .prose-apex ul { @apply my-2 list-disc pl-5 space-y-1; }
+  .prose-apex ol { @apply my-2 list-decimal pl-5 space-y-1; }
+  .prose-apex strong { @apply font-semibold text-fg; }
+  .prose-apex table { @apply my-3 w-full border-collapse text-xs; }
+  .prose-apex th, .prose-apex td { @apply border border-line px-2 py-1.5 text-left align-top; }
+  .prose-apex code { @apply rounded bg-raised px-1 py-0.5 text-[0.85em]; }
+}
+
+.glow { box-shadow: 0 0 0 1px rgb(var(--accent) / .25), 0 20px 60px -20px rgb(var(--accent) / .35); }
+.grid-bg {
+  background-image: linear-gradient(rgb(var(--line) / .35) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--line) / .35) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

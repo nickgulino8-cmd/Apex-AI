@@ -1,0 +1,10 @@
+node_modules
+.next
+storage/
+*.db
+*.db-*
+.env*
+!.env.example
+next-env.d.ts
+public/mediapipe/vision_wasm*
+tsconfig.tsbuildinfo
