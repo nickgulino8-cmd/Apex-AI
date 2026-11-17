@@ -91,4 +91,4 @@ Body-specific rules:
 - priorities: up to 4 groups to emphasise, each with exercise_ids from the allowed list; prefer exercises suited to the person's equipment when given.
 - posture: neutral observations like "shoulders appear rolled forward" with the caveat that a photo is not a postural assessment; suggest a physiotherapist for pain.
 - If the image isn't a clear photo of a person's physique (e.g. clothed so muscles aren't visible), set usable=false and explain.
-- If the person appears to be a minor, set usable=false and say physique analysis is only available for adults.`;
+- The prompt states the account holder's age (confirmed at setup). Treat the person as that age; looking young is not a reason to decline. Only set usable=false for age if the photo very clearly shows a child.`;

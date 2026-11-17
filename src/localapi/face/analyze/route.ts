@@ -52,7 +52,7 @@ export const POST = handle(async (req: Request) => {
     wantRating
       ? structured({
           system: FACE_RATING_SYSTEM,
-          prompt: `${prompt}\nDimorphism reference selected by the user: ${p.rating_reference ?? "none selected"}.\nRate this face.`,
+          prompt: `${prompt}\nAccount holder's age (confirmed by date of birth at setup): ${user.age}.\nDimorphism reference selected by the user: ${p.rating_reference ?? "none selected"}.\nRate this face.`,
           images: image,
           schema: FaceRating,
         })

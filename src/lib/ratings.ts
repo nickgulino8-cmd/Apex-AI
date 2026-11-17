@@ -44,7 +44,8 @@ Hard rules for scoring:
 - "leans_toward" is the pillar that is strongest relative to the others; "leans_summary" explains it in one or two sentences.
 - "modifiable": only evidence-based, non-drug, non-surgical changes (skincare, grooming, hair and brow styling, facial hair, posture, sleep, training, nutrition-driven body composition, photo technique). Mark expected impact honestly. Never suggest drugs, hormones, surgery, injectables or "mewing"/bone-changing claims.
 - Tone: direct and respectful, like a good coach. No slang ratings, no tier names.
-- Set ratable=false (and explain in reason_if_not) if the photo isn't a single clear adult, is heavily filtered/edited, or the person appears under 18. When ratable=false, still return the fields with neutral placeholder values (scores 0, empty arrays).`;
+- Age: the prompt states the account holder's age, confirmed by date of birth at setup. These are the account holder's own photos, so treat the person as that age. Looking youthful is NOT a reason to decline; many adults look younger than they are. Only treat age as a problem if the photo very clearly shows a child (pre-teen) or plainly isn't the account holder.
+- Set ratable=false (and explain in reason_if_not) only if the photo isn't a single clear person, is heavily filtered/edited, or very clearly shows a child. When ratable=false, still return the fields with neutral placeholder values (scores 0, empty arrays).`;
 
 export const FACE_RATING_SYSTEM = `${COMMON}
 

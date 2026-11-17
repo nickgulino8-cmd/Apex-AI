@@ -20,7 +20,7 @@ export const POST = handle(async (req: Request) => {
   const imgs = b.images.map((x) => ({ ...preparePhoto(user, x.image, b.consent), view: x.view }));
   const owned = EXERCISES.filter((e) => available(e, user.profile.equipment)).map((e) => e.id);
   const images = imgs.map((i) => ({ data: i.base64, mediaType: i.mediaType }));
-  const prompt = `Photos provided (in order): ${imgs.map((i) => i.view).join(", ")}. Training experience: ${user.profile.experience}. Goals: ${user.profile.goals.join(", ")}. Exercises available with their equipment: ${owned.join(", ")}.`;
+  const prompt = `Photos provided (in order): ${imgs.map((i) => i.view).join(", ")}. Account holder's age (confirmed by date of birth at setup): ${user.age}. Training experience: ${user.profile.experience}. Goals: ${user.profile.goals.join(", ")}. Exercises available with their equipment: ${owned.join(", ")}.`;
   const wantRating = user.profile.show_ratings && !user.isMinor;
   const [reportRes, ratingRes] = await Promise.allSettled([
     structured({ system: BODY_SYSTEM, prompt, images, schema: BodyReport }),
