@@ -78,8 +78,8 @@ export function buildContext(user: User): string {
     (() => {
       if (!p.show_ratings || user.isMinor) return "";
       const r = db.prepare("SELECT created_at, ratings FROM face_analyses WHERE user_id = ? AND ratings IS NOT NULL ORDER BY created_at DESC LIMIT 1").get(user.id) as { created_at: string; ratings: string } | undefined;
-      const fr = r ? json<{ overall: { score: number }; pillars: { pillar: string; score: number }[]; leans_toward: string; modifiable: { area: string }[] } | null>(r.ratings, null) : null;
-      return fr ? `Latest facial rating (${r!.created_at.slice(0, 10)}, user opted in): ${fr.overall.score}/10; pillars ${fr.pillars.map((x) => `${x.pillar} ${x.score}`).join(", ")}; leans toward ${fr.leans_toward}; modifiable areas: ${fr.modifiable.map((m) => m.area).join(", ")}. You may discuss it and how to improve modifiable areas, but don't produce new ratings.` : "";
+      const fr = r ? json<{ overall: { score: number }; pillars: { pillar: string; score: number; improve?: { action: string }[] }[]; leans_toward: string } | null>(r.ratings, null) : null;
+      return fr ? `Latest facial rating (${r!.created_at.slice(0, 10)}, user opted in): ${fr.overall.score}/10; pillars ${fr.pillars.map((x) => `${x.pillar} ${x.score}`).join(", ")}; leans toward ${fr.leans_toward}; improvement plan: ${fr.pillars.map((x) => `${x.pillar}: ${(x.improve ?? []).map((i) => i.action).join("; ")}`).join(" | ")}. You may discuss it and how to improve modifiable areas, but don't produce new ratings.` : "";
     })(),
     mem.length ? `Things the user asked you to remember:\n${mem.map((m) => `- ${m.content}`).join("\n")}` : "",
   ]

@@ -16,7 +16,7 @@ export function Onboarding({ existing: existingProp }: { existing: { name: strin
   const [who, setWho] = useState({ name: existing?.name ?? "", birthDate: "" });
   const age = who.birthDate ? ageFrom(who.birthDate) : null;
   const isMinor = existing ? existing.isMinor : age !== null && age < 18;
-  const name = who.name || "there";
+  const name = who.name;
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [s, set] = useState({
@@ -165,7 +165,7 @@ export function Onboarding({ existing: existingProp }: { existing: { name: strin
       <div className="pointer-events-none absolute -top-40 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-accent/15 blur-[120px]" />
       <div className="relative w-full max-w-xl">
         <div className="mb-6 flex items-center justify-between">
-          <div className="label">Welcome, {name.split(" ")[0]}</div>
+          <div className="label">{name ? `Welcome, ${name.split(" ")[0]}` : "Welcome"}</div>
           <div className="flex gap-1.5">{steps.map((_, i) => <span key={i} className={`h-1 w-8 rounded-full ${i <= step ? "bg-accent" : "bg-line"}`} />)}</div>
         </div>
         <div key={step} className="card card-pad animate-fadeUp">

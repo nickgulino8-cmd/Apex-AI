@@ -7,11 +7,10 @@ export type RatingLike = {
   ratable: boolean;
   reason_if_not: string;
   overall: { score: number; low: number; high: number };
-  pillars: { pillar: string; score: number; evidence: string; note: string }[];
+  pillars: { pillar: string; score: number; evidence: string; note: string; improve?: { action: string; detail: string; impact: "small" | "moderate" | "large" }[] }[];
   leans_toward: string;
   leans_summary: string;
   strengths: string[];
-  modifiable: { area: string; suggestion: string; impact: "small" | "moderate" | "large" }[];
   caveats: string[];
 };
 

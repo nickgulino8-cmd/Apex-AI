@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { OTC_SUGGESTABLE, DERM_DISCUSS } from "./data/compounds";
+import { DERM_DISCUSS } from "./data/compounds";
 import { EXERCISES, MUSCLE_GROUPS } from "./data/exercises";
 import { SAFETY } from "./ai";
 
@@ -19,21 +19,8 @@ export const FaceReport = z.object({
       zones: z.array(z.enum(ZONES)),
     }),
   ),
-  structure: z.array(
-    z.object({
-      feature: z.enum(["facial_thirds", "symmetry", "jawline_chin", "cheekbones", "contours", "proportions"]),
-      observation: z.string(),
-    }),
-  ),
-  recommendations: z.array(
-    z.object({
-      concern: z.string(),
-      compound_ids: z.array(z.enum(OTC_SUGGESTABLE as [string, ...string[]])),
-      rationale: z.string(),
-      priority: z.enum(["foundation", "targeted", "optional"]),
-    }),
-  ),
-  habits: z.array(z.string()),
+  detected_skin_type: z.enum(["oily", "dry", "combination", "normal", "sensitive", "unknown"]),
+  detected_concerns: z.array(z.enum(["acne", "redness", "hyperpigmentation", "texture", "dryness", "oiliness", "photoaging", "under-eye"])),
   professional: z.array(Pro),
   prescription_options: z.array(
     z.object({
@@ -71,10 +58,9 @@ export const FACE_SYSTEM = `You are APEX's skin and facial-observation assistant
 ${SAFETY}
 
 Face-specific rules:
-- Structure observations must be descriptive, never evaluative (say "the lower third measures slightly longer than the middle third", never "ideal", "strong", "weak", "good", "bad", "masculine", "feminine", "attractive", "harmonious"). Note that all faces vary and natural asymmetry is normal.
-- Use the provided landmark measurements for proportions/symmetry and say they are approximate and affected by camera angle, lens distance and expression.
 - Skin observations: describe visible features only (e.g. "several small red raised spots on the image-left cheek"). Don't name diseases. Lighting, filters and makeup affect what is visible — say so when relevant.
-- recommendations.compound_ids may only use the allowed OTC ids. Explain the reasoning in plain language. Always include a gentle cleanser/moisturiser/sunscreen "foundation" item.
+- detected_skin_type: your best read of the skin type from the photo (use "unknown" if lighting/makeup makes it unclear; the user's self-reported type is given for context). detected_concerns: only concerns actually visible at mild extent or more. These drive an automatic AM/PM routine, so be accurate.
+- Be concise. summary ≤ 2 sentences. Each skin observation ≤ 20 words; include a skin item only if there's something to say (skip "none visible" categories except one "general" line). prescription_options: max 4, why ≤ 20 words, expect ≤ 25 words.
 - prescription_options: for each visible concern where prescription treatment is commonly used, list the prescription dermatology options that fit it (allowed ids only), with why it suits what's visible and what to expect (timeline, common side effects, monitoring such as iPLEDGE for isotretinoin). Order by how commonly dermatologists start with them. Include options for mild concerns too when they are standard (e.g. tretinoin for acne or photoaging). No doses. These are options to bring to a dermatologist, who decides; respect pregnancy flags (exclude retinoids, spironolactone, hydroquinone, finasteride when pregnant/trying).
 - professional: include an item when anything could warrant a clinician (moles that look irregular, non-healing sores, severe acne, signs of infection). Use urgency "prompt" for changing/irregular moles or sores.
 - Zones use IMAGE left/right (the viewer's left/right), not the person's.

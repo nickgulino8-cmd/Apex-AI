@@ -4,9 +4,12 @@ export type FaceReportT = {
   image_quality: { usable: boolean; issues: string[] };
   summary: string;
   skin: { category: string; observation: string; extent: Extent; zones: string[] }[];
-  structure: { feature: string; observation: string }[];
-  recommendations: { concern: string; compound_ids: string[]; rationale: string; priority: "foundation" | "targeted" | "optional" }[];
-  habits: string[];
+  detected_skin_type?: "oily" | "dry" | "combination" | "normal" | "sensitive" | "unknown";
+  detected_concerns?: string[];
+  /** Older reports only. */
+  structure?: { feature: string; observation: string }[];
+  recommendations?: { concern: string; compound_ids: string[]; rationale: string; priority: "foundation" | "targeted" | "optional" }[];
+  habits?: string[];
   professional: { reason: string; urgency: "routine" | "soon" | "prompt" }[];
   prescription_options: { compound_id: string; for_concern: string; why: string; expect: string }[];
   ratings?: RatingT | null;
@@ -23,7 +26,8 @@ export type BodyReportT = {
   ratings?: RatingT | null;
   rating_error?: string | null;
 };
-export type PillarT = { pillar: string; score: number; evidence: string; note: string };
+export type ImproveT = { action: string; detail: string; impact: "small" | "moderate" | "large" };
+export type PillarT = { pillar: string; score: number; evidence: string; note: string; improve?: ImproveT[] };
 export type RatingT = {
   ratable: boolean;
   reason_if_not: string;
@@ -32,6 +36,7 @@ export type RatingT = {
   leans_toward: string;
   leans_summary: string;
   strengths: string[];
-  modifiable: { area: string; suggestion: string; impact: "small" | "moderate" | "large" }[];
+  /** Older ratings only; newer ones carry per-pillar `improve`. */
+  modifiable?: { area: string; suggestion: string; impact: "small" | "moderate" | "large" }[];
   caveats: string[];
 };

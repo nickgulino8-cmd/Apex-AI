@@ -155,9 +155,9 @@ export function PhysiqueScan({ aiReady, consented, exerciseNames, past, showRati
             )}
           </div>
           <div className="space-y-4">
-            <div className="card card-pad">
-              <div className="label mb-3 flex items-center gap-2"><Activity size={13} /> Group-by-group</div>
-              <div className="divide-y divide-line/60">
+            <details className="card card-pad group">
+              <summary className="label flex cursor-pointer list-none items-center gap-2"><Activity size={13} /> Group-by-group <span className="ml-auto normal-case tracking-normal text-dim group-open:hidden">Tap to view</span></summary>
+              <div className="mt-3 divide-y divide-line/60">
                 {report.groups.filter((g) => g.visibility !== "not_visible").map((g) => (
                   <div key={g.group} className="py-2.5 text-sm">
                     <div className="flex items-center justify-between gap-2"><span className="font-medium">{GROUP_LABEL[g.group as MuscleGroup]}</span><Badge tone={g.relative_development === "less_developed" ? "accent" : "neutral"}>{DEV_LABEL[g.relative_development]}</Badge></div>
@@ -165,16 +165,16 @@ export function PhysiqueScan({ aiReady, consented, exerciseNames, past, showRati
                   </div>
                 ))}
               </div>
-            </div>
+            </details>
             {report.posture.length > 0 && (
               <div className="card card-pad"><div className="label mb-2">Posture notes</div><ul className="space-y-1 text-sm text-fg/90">{report.posture.map((x) => <li key={x}>— {x}</li>)}</ul></div>
             )}
             {report.structure_notes.length > 0 && (
-              <div className="rounded-2xl border border-line/70 bg-surface p-5">
-                <div className="label mb-2 flex items-center gap-2"><Dna size={13} /> Muscle shape & insertions</div>
+              <details className="rounded-2xl border border-line/70 bg-surface p-5">
+                <summary className="label flex cursor-pointer list-none items-center gap-2"><Dna size={13} /> Muscle shape & insertions</summary>
                 <ul className="space-y-1.5 text-sm text-fg/90">{report.structure_notes.map((x) => <li key={x}>— {x}</li>)}</ul>
                 <p className="mt-3 flex gap-2 text-xs text-muted"><Info size={14} className="mt-0.5 shrink-0" />Insertion points and muscle-belly length are set by genetics. Training can&apos;t change them, a photo can&apos;t reliably judge them, and they don&apos;t stop a muscle from growing. There&apos;s no such thing as a &quot;bad&quot; insertion.</p>
-              </div>
+              </details>
             )}
             {report.professional.length > 0 && <Notice tone="warn">{report.professional.map((p) => p.reason).join(" ")}</Notice>}
           </div>

@@ -69,7 +69,6 @@ export const POST = handle(async (req: Request) => {
 
   const PREG_EXCLUDE = ["retinol", "retinaldehyde", "adapalene", "tretinoin", "tazarotene", "trifarotene", "isotretinoin", "spironolactone", "hydroquinone", "finasteride"];
   if (p.pregnancy_flag) {
-    for (const r of report.recommendations) r.compound_ids = r.compound_ids.filter((c) => !PREG_EXCLUDE.includes(c));
     report.prescription_options = report.prescription_options.filter((o) => !PREG_EXCLUDE.includes(o.compound_id));
   }
 

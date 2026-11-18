@@ -3,7 +3,7 @@
  * On-device request router. The UI keeps calling `/api/...` URLs; instead of going to a
  * server, each request is dispatched to the matching handler module running in the browser.
  */
-import { initDb } from "./db";
+import { initDb, flush } from "./db";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Handler = (req: Request, ctx: { params: Promise<any> }) => Promise<Response>;
@@ -43,7 +43,11 @@ export async function localFetch(url: string, init: RequestInit = {}): Promise<R
     const h = mod[method];
     if (!h) return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
     const params = Object.fromEntries(names.map((n, i) => [n, decodeURIComponent(m[i + 1])]));
-    return h(new Request(u, { ...init, method }), { params: Promise.resolve(params) });
+    const res = await h(new Request(u, { ...init, method }), { params: Promise.resolve(params) });
+    // Writes are committed to on-device storage before the UI hears "done", so closing the
+    // app right after saving can't lose data.
+    if (method !== "GET") await flush();
+    return res;
   }
   return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
 }

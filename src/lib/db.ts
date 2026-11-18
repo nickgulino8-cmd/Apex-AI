@@ -208,7 +208,7 @@ function scheduleSave() {
   version++;
   listeners.forEach((l) => l());
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(flush, 250);
+  saveTimer = setTimeout(flush, 40);
 }
 
 /** Persist immediately (also called when the app is backgrounded). */
